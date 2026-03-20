@@ -1,0 +1,13 @@
+services:
+  coursevision:
+    build: .
+    restart: unless-stopped
+    environment:
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      AUTHORIZED_USER_ID: ${AUTHORIZED_USER_ID}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      DATABASE_PATH: /data/database.db
+    volumes:
+      - ./data:/data
+    ports:
+      - "8080:8080"
