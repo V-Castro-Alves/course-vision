@@ -36,13 +36,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-# WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+DAYS_PTBR = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
+WEEKDAYS_PTBR = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira"]
 
 # Gemini Client setup
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 class ClassRow(BaseModel):
+    day_index: int = -1
+    class_date: str = ""
     class_code: str = ""
     class_name: str = ""
     professor: str = ""
@@ -53,7 +58,7 @@ class TableData(BaseModel):
 
 SQL_SCHEMA = [
     "CREATE TABLE IF NOT EXISTS raw_images (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, mime_type TEXT, image_blob BLOB, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-    "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
+    "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, class_date TEXT NOT NULL, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
     "CREATE TABLE IF NOT EXISTS exams (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, date TEXT NOT NULL, notes TEXT)",
     "CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL, class_date TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('attended','skipped')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
 ]
@@ -271,6 +276,38 @@ def should_skip_row(row: ClassRow) -> bool:
 
     return False
 
+def assign_dates_to_classes(rows: List[ClassRow]) -> List[ClassRow]:
+    today = datetime.now().date()
+    # Calculate the Monday of the current week
+    monday_of_week = today - timedelta(days=today.weekday())
+
+    class_assignments_per_day = {} # To keep track of how many classes have been assigned to each day
+
+    assigned_rows = []
+    current_day_offset = 0 # 0 for Monday, 1 for Tuesday, etc.
+
+    for row in rows:
+        if current_day_offset >= len(WEEKDAYS): # Stop assigning after Friday
+            break
+
+        current_day_name = WEEKDAYS[current_day_offset]
+        
+        # Get count for current day, default to 0
+        assigned_count = class_assignments_per_day.get(current_day_name, 0)
+
+        # Assign date and day_index
+        row.day_index = monday_of_week.weekday() + current_day_offset
+        row.class_date = (monday_of_week + timedelta(days=current_day_offset)).isoformat()
+        
+        assigned_rows.append(row)
+        class_assignments_per_day[current_day_name] = assigned_count + 1
+
+        # If 2 classes have been assigned to the current day, move to the next day
+        if class_assignments_per_day[current_day_name] >= 2:
+            current_day_offset += 1
+            
+    return assigned_rows
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Welcome to CourseVision!\nCommands:\n"
@@ -281,24 +318,73 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/stats\n"
     )
 
-# @check_auth
-# async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     conn = db_connect()
-#     cur = conn.cursor()
-#     cur.execute("SELECT * FROM classes ORDER BY day_index, start_time")
-#     items = cur.fetchall()
-#     if not items:
-#         await update.message.reply_text("No classes stored yet. Send a schedule image to upload.")
-#         conn.close()
-#         return
+@check_auth
+async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    conn = db_connect()
+    cur = conn.cursor()
 
-#     text = ["📅 Stored classes:"]
-#     for r in items:
-#         text.append(
-#             f"{DAYS[r['day_index']]} {r['start_time']}-{r['end_time']} {r['subject']} [{r['room']}]"
-#         )
-#     await update.message.reply_text("\n".join(text))
-#     conn.close()
+    today = datetime.now().date()
+    monday_of_week = today - timedelta(days=today.weekday())
+    friday_of_week = monday_of_week + timedelta(days=4) # Assuming classes are Mon-Fri
+
+    cur.execute(
+        "SELECT * FROM classes WHERE class_date BETWEEN ? AND ? ORDER BY day_index, class_date",
+        (monday_of_week.isoformat(), friday_of_week.isoformat())
+    )
+    items = cur.fetchall()
+    if not items:
+        await update.message.reply_text(f"Nenhuma aula cadastrada para a semana de {monday_of_week.strftime('%d/%m')}. Envie uma imagem de horário para cadastrar.")
+        conn.close()
+        return
+
+    text = [f"📅 *Aulas para a semana de {monday_of_week.strftime('%d/%m')}*"]
+    current_day_index = -1
+    for r in items:
+        if r['day_index'] != current_day_index:
+            current_day_index = r['day_index']
+            class_date_obj = datetime.fromisoformat(r['class_date']).date()
+            text.append(f"\n*{DAYS_PTBR[current_day_index]}* ({class_date_obj.strftime('%d/%m')}):")
+        
+        text.append(
+            f"  * {r['subject']} (`{r['code']}`)"
+            f"\n  Professor: {r['professor']}"
+            f"\n  Local: {r['room']}"
+        )
+    await update.message.reply_text("\n".join(text), parse_mode='Markdown')
+    conn.close()
+
+@check_auth
+async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    conn = db_connect()
+    cur = conn.cursor()
+
+    today = datetime.now().date()
+    today_iso = today.isoformat()
+
+    cur.execute(
+        "SELECT * FROM classes WHERE class_date = ? ORDER BY day_index, class_date",
+        (today_iso,)
+    )
+    items = cur.fetchall()
+    if not items:
+        await update.message.reply_text(f"Nenhuma aula cadastrada para hoje ({today.strftime('%d/%m')}).")
+        conn.close()
+        return
+
+    text = [f"📅 *Aulas de hoje ({today.strftime('%d/%m')})*"]
+    current_day_index = -1 # Should always be today's day_index, but for consistency
+    for r in items:
+        if r['day_index'] != current_day_index: # This check is mostly for formatting consistency, as all items should have the same day_index
+            current_day_index = r['day_index']
+            # No need to display day name again if it's "today"
+        
+        text.append(
+            f"  * {r['subject']} (`{r['code']}`)"
+            f"\n  Professor: {r['professor']}"
+            f"\n  Local: {r['room']}"
+        )
+    await update.message.reply_text("\n".join(text), parse_mode='Markdown')
+    conn.close()
 
 @check_auth
 async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -426,18 +512,37 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         conn = db_connect()
         cur = conn.cursor()
+
+        # --- NEW LOGIC FOR DELETING EXISTING CLASSES ---
+        today = datetime.now().date()
+        monday_of_week = today - timedelta(days=today.weekday())
+        friday_of_week = monday_of_week + timedelta(days=4) # Assuming classes are Mon-Fri
+
+        logger.info(f"Deleting classes for the week of {monday_of_week.isoformat()} to {friday_of_week.isoformat()}")
+        cur.execute(
+            "DELETE FROM classes WHERE class_date BETWEEN ? AND ?",
+            (monday_of_week.isoformat(), friday_of_week.isoformat())
+        )
+        # --- END NEW LOGIC ---
+
         inserted = 0
         
+        processed_rows = []
         for row in structured_data.rows:
             normalized = normalize_row(row)
             if should_skip_row(normalized):
                 continue
-            
+            processed_rows.append(normalized)
+
+        # Assign dates to the processed rows
+        assigned_classes = assign_dates_to_classes(processed_rows)
+
+        for class_item in assigned_classes:
             # The 'subject' field in the DB will now store the class_name
             # The 'room' field in the DB will now store the classroom
             cur.execute(
-                "INSERT INTO classes (code, subject, professor, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?)",
-                (normalized.class_code, normalized.class_name, normalized.professor, normalized.classroom, "Gemini parsed", source_image_id),
+                "INSERT INTO classes (day_index, class_date, code, subject, professor, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (class_item.day_index, class_item.class_date, class_item.class_code, class_item.class_name, class_item.professor, class_item.classroom, "Gemini parsed", source_image_id),
             )
             inserted += 1
         
@@ -520,7 +625,8 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", start))
     app.add_handler(CommandHandler("upload", upload_command))
-    # app.add_handler(CommandHandler("schedule", schedule_text))
+    app.add_handler(CommandHandler("schedule", schedule_text))
+    app.add_handler(CommandHandler("today", today_classes))
     app.add_handler(CommandHandler("add_exam", add_exam))
     app.add_handler(CommandHandler("exams", list_exams))
     app.add_handler(CommandHandler("stats", stats))

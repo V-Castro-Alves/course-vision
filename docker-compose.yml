@@ -1,5 +1,6 @@
 services:
   coursevision:
+    container_name: course_vision
     build: .
     restart: unless-stopped
     environment:
