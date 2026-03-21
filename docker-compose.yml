@@ -7,6 +7,7 @@ services:
       AUTHORIZED_USER_ID: ${AUTHORIZED_USER_ID}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       DATABASE_PATH: /data/database.db
+      DEBUG: ${DEBUG}
     volumes:
       - ./data:/data
     ports:

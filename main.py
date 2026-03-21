@@ -1,15 +1,17 @@
 import logging
 import os
+import re
 import sqlite3
 import mimetypes
 from datetime import datetime, timedelta
 from typing import List
+import asyncio
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors as genai_errors
 from pydantic import BaseModel
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import Update
 from telegram.ext import (ApplicationBuilder, CallbackQueryHandler,
                           CommandHandler, ContextTypes, MessageHandler, filters)
 
@@ -25,6 +27,8 @@ if not TELEGRAM_TOKEN:
     raise RuntimeError("TELEGRAM_TOKEN is required")
 if AUTHORIZED_USER_ID == 0:
     raise RuntimeError("AUTHORIZED_USER_ID is required")
+if not GEMINI_API_KEY:
+    logging.warning("GEMINI_API_KEY is not set. Extraction will fail.")
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -32,16 +36,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+# DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+# WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
 # Gemini Client setup
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 class ClassRow(BaseModel):
-    day: str = ""
-    start_time: str = ""
-    end_time: str = ""
     class_code: str = ""
     class_name: str = ""
     professor: str = ""
@@ -52,7 +53,7 @@ class TableData(BaseModel):
 
 SQL_SCHEMA = [
     "CREATE TABLE IF NOT EXISTS raw_images (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, mime_type TEXT, image_blob BLOB, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-    "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, start_time TEXT NOT NULL, end_time TEXT NOT NULL, subject TEXT NOT NULL, room TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
+    "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
     "CREATE TABLE IF NOT EXISTS exams (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, date TEXT NOT NULL, notes TEXT)",
     "CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL, class_date TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('attended','skipped')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
 ]
@@ -62,7 +63,28 @@ def db_connect():
     conn.row_factory = sqlite3.Row
     return conn
 
+def drop_all_tables():
+    conn = db_connect()
+    cur = conn.cursor()
+    # Extract table names from CREATE TABLE statements
+    table_names = []
+    for stmt in SQL_SCHEMA:
+        match = re.search(r"CREATE TABLE (?:IF NOT EXISTS )?(\w+)", stmt)
+        if match:
+            table_names.append(match.group(1))
+    
+    # Drop tables in reverse order of creation to handle foreign key constraints
+    for table_name in reversed(table_names):
+        logger.info(f"Dropping table: {table_name}")
+        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+    conn.commit()
+    conn.close()
+
 def init_db():
+    if os.getenv("DEBUG") == "TRUE":
+        logger.warning("DEBUG mode is active. Dropping all existing database tables.")
+        drop_all_tables()
+
     conn = db_connect()
     cur = conn.cursor()
     for stmt in SQL_SCHEMA:
@@ -85,29 +107,31 @@ def check_auth(func):
         return await func(update, context)
     return wrapper
 
+...
 def get_model_candidates():
     candidates = []
-    if GEMINI_MODEL:
-        candidates.append(GEMINI_MODEL)
-    # Flash models are preferred for free tier. 
-    # List based on current available models in AI Studio.
-    for fallback in [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-3-flash-preview",
-        "gemini-2.0-flash-lite",
-        "gemini-flash-latest",
-    ]:
+
+    configured = os.getenv("GEMINI_MODEL")
+    if configured:
+        candidates.append(configured)
+
+    # Flash models are usually available on free tier.
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash"]:
         if fallback not in candidates:
             candidates.append(fallback)
+
     return candidates
 
-def generate_with_model_fallback(image_bytes, mime_type, prompt):
+    
+async def generate_with_model_fallback(image_bytes, mime_type, prompt):
     if not client:
         raise RuntimeError("GEMINI_API_KEY not configured.")
     
     last_quota_error = None
     candidates = get_model_candidates()
+
+    logger.info(f"Image details: size={len(image_bytes)} bytes, mime_type={mime_type}")
+    logger.debug(f"Prompt sent to Gemini: {prompt}")
     
     for model_id in candidates:
         try:
@@ -123,18 +147,18 @@ def generate_with_model_fallback(image_bytes, mime_type, prompt):
                     "response_schema": TableData,
                 }
             )
+            logger.debug(f"Raw Gemini response from {model_id}: {response.text}")
             return response, model_id
         except genai_errors.ClientError as err:
-            # The SDK might return status_code as an int or a string, or it might be in 'code'
             status_code = getattr(err, "status_code", None)
             if status_code is None:
-                # Try to extract from the error message or other attributes if possible
                 if "429" in str(err) or "RESOURCE_EXHAUSTED" in str(err):
                     status_code = 429
             
             if status_code == 429 or status_code == "429":
                 last_quota_error = err
-                logger.warning(f"Quota exceeded for model '{model_id}'. Trying next candidate...")
+                logger.warning(f"Quota exceeded for model '{model_id}'. Waiting 2s before next model...")
+                await asyncio.sleep(2)  # Pause to respect rate limits
                 continue
             
             logger.error(f"ClientError with model {model_id}: {err}")
@@ -145,28 +169,106 @@ def generate_with_model_fallback(image_bytes, mime_type, prompt):
             continue
             
     raise RuntimeError(
-        f"All configured Gemini models ({candidates}) are out of quota or failed. "
-        "Check your API key and quota at https://aistudio.google.com/"
+        f"All Gemini models ({candidates}) failed. Check quota at https://aistudio.google.com/"
     ) from last_quota_error
 
 def clean_cell(value: str) -> str:
     return " ".join((value or "").split())
 
+def looks_like_class_code(value: str) -> bool:
+    token = value.strip()
+    if not token:
+        return False
+
+    if not re.fullmatch(r"[A-Za-z0-9/]+", token):
+        return False
+
+    return any(ch.isalpha() for ch in token)
+
+def split_class_code_and_name(class_code: str, class_name: str) -> tuple[str, str]:
+    code = clean_cell(class_code)
+    name = clean_cell(class_name)
+
+    if not code and name and "-" in name:
+        possible_code, possible_name = name.split("-", 1)
+        if looks_like_class_code(possible_code):
+            code = possible_code.strip()
+            name = possible_name.strip()
+
+    if code and name:
+        prefixed_name = f"{code}-"
+        if name.startswith(prefixed_name):
+            name = name[len(prefixed_name):].strip()
+
+    return code, name
+
+def normalize_classroom(value: str) -> str:
+    classroom = clean_cell(value)
+    if not classroom:
+        return classroom
+
+    # Keep existing explicit separators untouched.
+    if any(separator in classroom for separator in ["/", ",", ";"]):
+        return classroom
+
+    # Example: "F-311 LAB C321B" -> "F-311/LAB C321B"
+    classroom = re.sub(
+        r"(?<=\d)\s+(?=(LAB\.?|SALA|ROOM)\b)",
+        "/",
+        classroom,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+
+    return classroom
+
 def normalize_row(row: ClassRow) -> ClassRow:
-    row.day = clean_cell(row.day).capitalize()
-    row.start_time = clean_cell(row.start_time)
-    row.end_time = clean_cell(row.end_time)
-    row.class_name = clean_cell(row.class_name)
-    row.classroom = clean_cell(row.classroom)
-    row.professor = clean_cell(row.professor)
-    return row
+    class_code, class_name = split_class_code_and_name(row.class_code, row.class_name)
+    professor = clean_cell(row.professor)
+    classroom = normalize_classroom(row.classroom)
+
+    # Fallback split if Gemini returns "... Prof. Name" inside class_name.
+    if not professor:
+        marker = " prof."
+        lowered = class_name.lower()
+        marker_index = lowered.rfind(marker)
+        if marker_index != -1:
+            professor = class_name[marker_index + len(marker):].strip()
+            class_name = class_name[:marker_index].strip(" -")
+
+    return ClassRow(
+        class_code=class_code,
+        class_name=class_name,
+        professor=professor,
+        classroom=classroom,
+    )
 
 def should_skip_row(row: ClassRow) -> bool:
-    combined = (row.day + row.class_name + row.classroom).lower()
-    if not combined:
+    class_code = row.class_code.lower()
+    class_name = row.class_name.lower()
+    professor = row.professor.lower()
+    classroom = row.classroom.lower()
+    combined_text = " ".join([class_code, class_name, professor, classroom])
+
+    if not (class_code or class_name or professor or classroom):
         return True
-    if "semestre" in combined or "sala" in combined or "professor" in combined:
+
+    # Typical title/header rows found in schedule screenshots.
+    if "semestre" in combined_text:
         return True
+
+    if class_code in {"codigo", "código"}:
+        return True
+
+    if class_name in {"disciplina", "materia", "matéria", "aula", "turma"}:
+        return True
+
+    if professor in {"professor", "professora", "docente"}:
+        return True
+
+    if not professor and classroom in {"sala", "local", "room"}:
+        return True
+
     return False
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -179,24 +281,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/stats\n"
     )
 
-@check_auth
-async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM classes ORDER BY day_index, start_time")
-    items = cur.fetchall()
-    if not items:
-        await update.message.reply_text("No classes stored yet. Send a schedule image to upload.")
-        conn.close()
-        return
+# @check_auth
+# async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     conn = db_connect()
+#     cur = conn.cursor()
+#     cur.execute("SELECT * FROM classes ORDER BY day_index, start_time")
+#     items = cur.fetchall()
+#     if not items:
+#         await update.message.reply_text("No classes stored yet. Send a schedule image to upload.")
+#         conn.close()
+#         return
 
-    text = ["📅 Stored classes:"]
-    for r in items:
-        text.append(
-            f"{DAYS[r['day_index']]} {r['start_time']}-{r['end_time']} {r['subject']} [{r['room']}]"
-        )
-    await update.message.reply_text("\n".join(text))
-    conn.close()
+#     text = ["📅 Stored classes:"]
+#     for r in items:
+#         text.append(
+#             f"{DAYS[r['day_index']]} {r['start_time']}-{r['end_time']} {r['subject']} [{r['room']}]"
+#         )
+#     await update.message.reply_text("\n".join(text))
+#     conn.close()
 
 @check_auth
 async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -304,15 +406,19 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
 
     prompt = (
-        "Extract class schedule entries from this screenshot. "
-        "For each class, return: day (e.g. Monday), start_time (HH:MM), end_time (HH:MM), "
-        "class_code, class_name, professor, and classroom. "
-        "If multiple classes are on the same row, extract them all. "
-        "If times are not explicitly mentioned, leave them empty."
+        "Extract only class schedule entries from this Excel screenshot. "
+        "Ignore title/header rows, including semester labels like '5o Semestre ...' "
+        "and column headers like 'Sala'. "
+        "For each class row, return exactly these fields: "
+        "class_code (course code only, e.g., TES/II), "
+        "class_name (subject only, without the class code), "
+        "professor (teacher name only), "
+        "classroom (room/lab/location only). "
+        "If there are multiple classrooms in the same cell, separate them with '/'."
     )
 
     try:
-        response, used_model = generate_with_model_fallback(image_bytes, mime_type, prompt)
+        response, used_model = await generate_with_model_fallback(image_bytes, mime_type, prompt)
         structured_data = response.parsed
         if not structured_data or not structured_data.rows:
             await update.message.reply_text("Gemini could not find any class data in that image.")
@@ -321,36 +427,17 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn = db_connect()
         cur = conn.cursor()
         inserted = 0
-        day_counts = {}
+        
         for row in structured_data.rows:
             normalized = normalize_row(row)
             if should_skip_row(normalized):
                 continue
             
-            day_idx = -1
-            for i, d in enumerate(DAYS):
-                if d.lower() in normalized.day.lower():
-                    day_idx = i
-                    break
-            
-            if day_idx == -1:
-                continue
-
-            # Default time logic: 1st class 19:00-20:30, 2nd class 20:50-22:30
-            if not normalized.start_time or not normalized.end_time or normalized.start_time == "00:00":
-                count = day_counts.get(day_idx, 0)
-                if count == 0:
-                    normalized.start_time = "19:00"
-                    normalized.end_time = "20:30"
-                else:
-                    normalized.start_time = "20:50"
-                    normalized.end_time = "22:30"
-                day_counts[day_idx] = count + 1
-
-            subject = f"{normalized.class_code} {normalized.class_name} ({normalized.professor})".strip()
+            # The 'subject' field in the DB will now store the class_name
+            # The 'room' field in the DB will now store the classroom
             cur.execute(
-                "INSERT INTO classes (day_index, start_time, end_time, subject, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (day_idx, normalized.start_time, normalized.end_time, subject, normalized.classroom, "Gemini parsed", source_image_id),
+                "INSERT INTO classes (code, subject, professor, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?)",
+                (normalized.class_code, normalized.class_name, normalized.professor, normalized.classroom, "Gemini parsed", source_image_id),
             )
             inserted += 1
         
@@ -380,31 +467,31 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer(f"Marked as {status}")
     await query.edit_message_text(f"Attendance for {class_date}: {status}")
 
-async def send_class_reminders(application):
-    now = datetime.now()
-    today_idx = now.weekday()
-    window_start = now + timedelta(minutes=10)
-    window_end = now + timedelta(minutes=11)
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM classes WHERE day_index = ?", (today_idx,))
-    rows = cur.fetchall()
-    for c in rows:
-        try:
-            class_datetime = datetime.strptime(f"{now.date()} {c['start_time']}", "%Y-%m-%d %H:%M")
-        except ValueError:
-            continue
-        if window_start <= class_datetime < window_end:
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("✅ Attended", callback_data=f"attendance:{c['id']}:{now.date()}:attended"),
-                InlineKeyboardButton("❌ Skipped", callback_data=f"attendance:{c['id']}:{now.date()}:skipped"),
-            ]])
-            await application.bot.send_message(
-                chat_id=AUTHORIZED_USER_ID,
-                text=f"⏰ Reminder: {c['subject']} at {c['start_time']} in {c['room']}",
-                reply_markup=keyboard,
-            )
-    conn.close()
+# async def send_class_reminders(application):
+#     now = datetime.now()
+#     today_idx = now.weekday()
+#     window_start = now + timedelta(minutes=10)
+#     window_end = now + timedelta(minutes=11)
+#     conn = db_connect()
+#     cur = conn.cursor()
+#     cur.execute("SELECT * FROM classes WHERE day_index = ?", (today_idx,))
+#     rows = cur.fetchall()
+#     for c in rows:
+#         try:
+#             class_datetime = datetime.strptime(f"{now.date()} {c['start_time']}", "%Y-%m-%d %H:%M")
+#         except ValueError:
+#             continue
+#         if window_start <= class_datetime < window_end:
+#             keyboard = InlineKeyboardMarkup([[
+#                 InlineKeyboardButton("✅ Attended", callback_data=f"attendance:{c['id']}:{now.date()}:attended"),
+#                 InlineKeyboardButton("❌ Skipped", callback_data=f"attendance:{c['id']}:{now.date()}:skipped"),
+#             ]])
+#             await application.bot.send_message(
+#                 chat_id=AUTHORIZED_USER_ID,
+#                 text=f"⏰ Reminder: {c['subject']} at {c['start_time']} in {c['room']}",
+#                 reply_markup=keyboard,
+#             )
+#     conn.close()
 
 async def send_exam_alerts(application):
     today = datetime.now().date()
@@ -423,9 +510,9 @@ async def send_exam_alerts(application):
             continue
         await application.bot.send_message(chat_id=AUTHORIZED_USER_ID, text=msg)
 
-async def periodic_jobs(context: ContextTypes.DEFAULT_TYPE):
-    await send_class_reminders(context.application)
-    await send_exam_alerts(context.application)
+# async def periodic_jobs(context: ContextTypes.DEFAULT_TYPE):
+#     await send_class_reminders(context.application)
+#     await send_exam_alerts(context.application)
 
 def main():
     init_db()
@@ -433,13 +520,13 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", start))
     app.add_handler(CommandHandler("upload", upload_command))
-    app.add_handler(CommandHandler("schedule", schedule_text))
+    # app.add_handler(CommandHandler("schedule", schedule_text))
     app.add_handler(CommandHandler("add_exam", add_exam))
     app.add_handler(CommandHandler("exams", list_exams))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, photo_upload))
     app.add_handler(CallbackQueryHandler(attendance_callback))
-    app.job_queue.run_repeating(periodic_jobs, interval=60, first=10)
+    # app.job_queue.run_repeating(periodic_jobs, interval=60, first=10)
     print("Bot started.")
     app.run_polling()
 

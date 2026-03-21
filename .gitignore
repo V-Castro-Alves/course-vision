@@ -211,3 +211,6 @@ __marimo__/
 *.db
 *.sqlite
 database.db
+
+# csv files used for training/debugging
+*.csv
