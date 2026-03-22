@@ -41,6 +41,7 @@ WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
 DAYS_PTBR = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
 WEEKDAYS_PTBR = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira"]
+WEEKDAYS_PTBR_SHORT = ["SEG", "TER", "QUA", "QUI", "SEX"]
 
 # Gemini Client setup
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
@@ -105,9 +106,9 @@ def check_auth(func):
         user_id = update.effective_user.id if update.effective_user else None
         if not auth_user(user_id):
             if update.message:
-                await update.message.reply_text("Unauthorized. This bot is private.")
+                await update.message.reply_text("Não autorizado. Este bot é privado.")
             elif update.callback_query:
-                await update.callback_query.answer("Unauthorized", show_alert=True)
+                await update.callback_query.answer("Não autorizado", show_alert=True)
             return
         return await func(update, context)
     return wrapper
@@ -310,12 +311,9 @@ def assign_dates_to_classes(rows: List[ClassRow]) -> List[ClassRow]:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Welcome to CourseVision!\nCommands:\n"
-        "/upload send schedule image\n"
-        "/schedule show classes\n"
-        "/add_exam YYYY-MM-DD Subject [notes]\n"
-        "/exams\n"
-        "/stats\n"
+        "Bem-vindo ao CourseVision!\nComandos:\n"
+        "/upload enviar imagem de horário\n"
+        "/schedule mostrar horários\n"
     )
 
 @check_auth
@@ -337,18 +335,18 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.close()
         return
 
-    text = [f"📅 *Aulas para a semana de {monday_of_week.strftime('%d/%m')}*"]
+    text = [f"📅 CRONOGRAMA SEMANAL ({monday_of_week.strftime('%d/%m')} - {friday_of_week.strftime('%d/%m')})"]
     current_day_index = -1
     for r in items:
         if r['day_index'] != current_day_index:
             current_day_index = r['day_index']
             class_date_obj = datetime.fromisoformat(r['class_date']).date()
-            text.append(f"\n*{DAYS_PTBR[current_day_index]}* ({class_date_obj.strftime('%d/%m')}):")
+            # Use WEEKDAYS_PTBR_SHORT for the day abbreviation
+            text.append(f"\n{WEEKDAYS_PTBR_SHORT[current_day_index]} ({class_date_obj.strftime('%d/%m')})")
         
         text.append(
-            f"  * {r['subject']} (`{r['code']}`)"
-            f"\n  Professor: {r['professor']}"
-            f"\n  Local: {r['room']}"
+            f"• {r['code']} - {r['subject']}"
+            f"\n└ 👤 Prof. {r['professor']} | 📍 {r['room']}"
         )
     await update.message.reply_text("\n".join(text), parse_mode='Markdown')
     conn.close()
@@ -371,17 +369,14 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.close()
         return
 
-    text = [f"📅 *Aulas de hoje ({today.strftime('%d/%m')})*"]
-    current_day_index = -1 # Should always be today's day_index, but for consistency
+    text = [f"📅 CRONOGRAMA DE HOJE ({today.strftime('%d/%m')})"]
+    # Add a day header for today's classes
+    text.append(f"\n{WEEKDAYS_PTBR_SHORT[today.weekday()]} ({today.strftime('%d/%m')})")
+
     for r in items:
-        if r['day_index'] != current_day_index: # This check is mostly for formatting consistency, as all items should have the same day_index
-            current_day_index = r['day_index']
-            # No need to display day name again if it's "today"
-        
         text.append(
-            f"  * {r['subject']} (`{r['code']}`)"
-            f"\n  Professor: {r['professor']}"
-            f"\n  Local: {r['room']}"
+            f"• {r['code']} - {r['subject']}"
+            f"\n└ 👤 Prof. {r['professor']} | 📍 {r['room']}"
         )
     await update.message.reply_text("\n".join(text), parse_mode='Markdown')
     conn.close()
@@ -390,7 +385,7 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = context.args
     if len(parts) < 2:
-        await update.message.reply_text("Usage: /add_exam YYYY-MM-DD Subject [notes]")
+        await update.message.reply_text("Uso: /add_exam AAAA-MM-DD Assunto [notas]")
         return
     date_text = parts[0]
     subject = parts[1]
@@ -398,7 +393,7 @@ async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         exam_date = datetime.fromisoformat(date_text).date()
     except ValueError:
-        await update.message.reply_text("Invalid date format. Use YYYY-MM-DD")
+        await update.message.reply_text("Formato de data inválido. Use AAAA-MM-DD")
         return
 
     conn = db_connect()
@@ -406,7 +401,7 @@ async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("INSERT INTO exams (subject, date, notes) VALUES (?, ?, ?)", (subject, exam_date.isoformat(), notes))
     conn.commit()
     conn.close()
-    await update.message.reply_text(f"Exam added: {exam_date} - {subject} {notes}")
+    await update.message.reply_text(f"Exame adicionado: {exam_date} - {subject} {notes}")
 
 @check_auth
 async def list_exams(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -416,9 +411,9 @@ async def list_exams(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rows = cur.fetchall()
     conn.close()
     if not rows:
-        await update.message.reply_text("No exams scheduled yet.")
+        await update.message.reply_text("Nenhum exame agendado ainda.")
         return
-    lines = ["📚 Upcoming exams:"]
+    lines = ["📚 Próximos exames:"]
     for r in rows:
         lines.append(f"{r['date']}: {r['subject']} ({r['notes']})")
     await update.message.reply_text("\n".join(lines))
@@ -435,11 +430,11 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     skipped = cur.fetchone()["skipped"]
     rate = f"{attended / total * 100:.1f}%" if total > 0 else "N/A"
     await update.message.reply_text(
-        "📊 Attendance Stats:\n"
-        f"Total responses: {total}\n"
-        f"Attended: {attended}\n"
-        f"Skipped: {skipped}\n"
-        f"Presence rate: {rate}"
+        "📊 Estatísticas de Presença:\n"
+        f"Total de respostas: {total}\n"
+        f"Presente: {attended}\n"
+        f"Faltou: {skipped}\n"
+        f"Taxa de presença: {rate}"
     )
     conn.close()
 
@@ -447,13 +442,13 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def upload_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_photo"] = True
     await update.message.reply_text(
-        "Send the schedule image now, and I will parse it into your classes using Gemini."
+        "Envie a imagem do horário agora, e eu a transformarei em suas aulas usando o Gemini."
     )
 
 @check_auth
 async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.user_data.get("awaiting_photo"):
-        await update.message.reply_text("Please run /upload first.")
+        await update.message.reply_text("Por favor, execute /upload primeiro.")
         return
     context.user_data["awaiting_photo"] = False
 
@@ -467,7 +462,7 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Use the actual extension from the filename or guess from mime_type
         ext = os.path.splitext(update.message.document.file_name)[1] or ".png"
     else:
-        await update.message.reply_text("Please send an image (JPG or PNG).")
+        await update.message.reply_text("Por favor, envie uma imagem (JPG ou PNG).")
         return
 
     path = f"/tmp/{file.file_unique_id}{ext}"
@@ -507,7 +502,7 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response, used_model = await generate_with_model_fallback(image_bytes, mime_type, prompt)
         structured_data = response.parsed
         if not structured_data or not structured_data.rows:
-            await update.message.reply_text("Gemini could not find any class data in that image.")
+            await update.message.reply_text("Gemini não conseguiu encontrar nenhum dado de aula nessa imagem.")
             return
 
         conn = db_connect()
@@ -548,11 +543,11 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         conn.commit()
         conn.close()
-        await update.message.reply_text(f"Successfully parsed {inserted} classes using {used_model}.")
+        await update.message.reply_text(f"Com sucesso, {inserted} aulas foram analisadas usando {used_model}.")
 
     except Exception as e:
-        logger.exception("Gemini extraction failed")
-        await update.message.reply_text(f"Error during extraction: {str(e)}")
+        logger.exception("A extração do Gemini falhou")
+        await update.message.reply_text(f"Erro durante a extração: {str(e)}")
 
 async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -561,7 +556,7 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.answer("Unauthorized", show_alert=True)
         return
     if not query.data.startswith("attendance:"):
-        await query.answer("Invalid callback")
+        await query.answer("Callback inválido")
         return
     _, class_id, class_date, status = query.data.split(":", 3)
     conn = db_connect()
@@ -569,8 +564,8 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     cur.execute("INSERT INTO attendance (class_id, class_date, status) VALUES (?, ?, ?)", (class_id, class_date, status))
     conn.commit()
     conn.close()
-    await query.answer(f"Marked as {status}")
-    await query.edit_message_text(f"Attendance for {class_date}: {status}")
+    await query.answer(f"Marcado como {status}")
+    await query.edit_message_text(f"Presença para {class_date}: {status}")
 
 # async def send_class_reminders(application):
 #     now = datetime.now()
@@ -608,9 +603,9 @@ async def send_exam_alerts(application):
     for exam in exams:
         exam_date = datetime.fromisoformat(exam["date"])
         if exam_date == today + timedelta(days=1):
-            msg = f"📢 Exam tomorrow: {exam['subject']} ({exam['notes']})"
+            msg = f"📢 Exame amanhã: {exam['subject']} ({exam['notes']})"
         elif exam_date == today:
-            msg = f"⚠️ Exam today: {exam['subject']} ({exam['notes']})"
+            msg = f"⚠️ Exame hoje: {exam['subject']} ({exam['notes']})"
         else:
             continue
         await application.bot.send_message(chat_id=AUTHORIZED_USER_ID, text=msg)
@@ -633,7 +628,7 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, photo_upload))
     app.add_handler(CallbackQueryHandler(attendance_callback))
     # app.job_queue.run_repeating(periodic_jobs, interval=60, first=10)
-    print("Bot started.")
+    print("Bot iniciado.")
     app.run_polling()
 
 if __name__ == "__main__":
