@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -19,6 +20,11 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 AUTHORIZED_USER_ID = int(os.getenv("AUTHORIZED_USER_ID", "0"))
+ALLOWED_TELEGRAM_IDS = [
+    int(user_id)
+    for user_id in os.getenv("ALLOWED_TELEGRAM_IDS", "").split(",")
+    if user_id
+]
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "database.db")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL")
@@ -36,12 +42,56 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
 DAYS_PTBR = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
 WEEKDAYS_PTBR = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira"]
 WEEKDAYS_PTBR_SHORT = ["SEG", "TER", "QUA", "QUI", "SEX"]
+
+RESPONSES_PATH = os.getenv("RESPONSES_PATH", "responses.json")
+RESPONSES = {}
+
+
+def load_responses(path: str = RESPONSES_PATH):
+    global RESPONSES
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            responses = json.load(f)
+            if not isinstance(responses, dict):
+                raise ValueError("Responses file must be a JSON object")
+            RESPONSES = responses
+    except FileNotFoundError:
+        raise RuntimeError(f"Translations file not found: {path}")
+    except Exception as exc:
+        raise RuntimeError(f"Error loading translations from {path}: {exc}")
+
+
+def get_user_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
+    user_id = update.effective_user.id
+    if context.user_data.get("lang"):
+        return context.user_data["lang"]
+
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT lang FROM users WHERE telegram_id = ?", (user_id,))
+    user_row = cur.fetchone()
+    if not user_row:
+        cur.execute("INSERT INTO users (telegram_id) VALUES (?)", (user_id,))
+        conn.commit()
+        lang = "en"
+    else:
+        lang = user_row["lang"]
+    conn.close()
+    context.user_data["lang"] = lang
+    return lang
+
+
+def t(update: Update, context: ContextTypes.DEFAULT_TYPE, key: str, **kwargs) -> str:
+    lang = get_user_lang(update, context)
+    if lang not in RESPONSES:
+        lang = "en"
+    text = RESPONSES.get(lang, {}).get(key) or RESPONSES.get("en", {}).get(key, key)
+    return text.format(**kwargs)
 
 # Gemini Client setup
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
@@ -58,6 +108,7 @@ class TableData(BaseModel):
     rows: List[ClassRow]
 
 SQL_SCHEMA = [
+    "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER UNIQUE NOT NULL, lang TEXT DEFAULT 'en')",
     "CREATE TABLE IF NOT EXISTS raw_images (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, mime_type TEXT, image_blob BLOB, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
     "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, class_date TEXT NOT NULL, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
     "CREATE TABLE IF NOT EXISTS exams (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, date TEXT NOT NULL, notes TEXT)",
@@ -87,10 +138,6 @@ def drop_all_tables():
     conn.close()
 
 def init_db():
-    if os.getenv("DEBUG") == "TRUE":
-        logger.warning("DEBUG mode is active. Dropping all existing database tables.")
-        drop_all_tables()
-
     conn = db_connect()
     cur = conn.cursor()
     for stmt in SQL_SCHEMA:
@@ -98,17 +145,32 @@ def init_db():
     conn.commit()
     conn.close()
 
-def auth_user(user_id):
+def is_owner(user_id: int) -> bool:
     return user_id == AUTHORIZED_USER_ID
+
+def auth_user(user_id: int) -> bool:
+    return is_owner(user_id) or user_id in ALLOWED_TELEGRAM_IDS
 
 def check_auth(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id if update.effective_user else None
         if not auth_user(user_id):
             if update.message:
-                await update.message.reply_text("Não autorizado. Este bot é privado.")
+                await update.message.reply_text(t(update, context, "auth_denied"))
             elif update.callback_query:
-                await update.callback_query.answer("Não autorizado", show_alert=True)
+                await update.callback_query.answer(t(update, context, "auth_denied"), show_alert=True)
+            return
+        return await func(update, context)
+    return wrapper
+
+def check_owner(func):
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id if update.effective_user else None
+        if not is_owner(user_id):
+            if update.message:
+                await update.message.reply_text(t(update, context, "auth_denied"))
+            elif update.callback_query:
+                await update.callback_query.answer(t(update, context, "auth_denied"), show_alert=True)
             return
         return await func(update, context)
     return wrapper
@@ -277,10 +339,21 @@ def should_skip_row(row: ClassRow) -> bool:
 
     return False
 
+def get_monday_of_week(today: datetime.date) -> datetime.date:
+    """
+    Calculates the Monday of the relevant week based on the current day.
+    - If today is Sunday, it returns the upcoming Monday.
+    - For any other day (Mon-Sat), it returns the Monday of the current week.
+    """
+    if today.weekday() == 6:  # Sunday
+        return today + timedelta(days=1)
+    else:  # Monday to Saturday
+        return today - timedelta(days=today.weekday())
+
 def assign_dates_to_classes(rows: List[ClassRow]) -> List[ClassRow]:
     today = datetime.now().date()
     # Calculate the Monday of the current week
-    monday_of_week = today - timedelta(days=today.weekday())
+    monday_of_week = get_monday_of_week(today)
 
     class_assignments_per_day = {} # To keep track of how many classes have been assigned to each day
 
@@ -311,10 +384,26 @@ def assign_dates_to_classes(rows: List[ClassRow]) -> List[ClassRow]:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Bem-vindo ao CourseVision!\nComandos:\n"
-        "/upload enviar imagem de horário\n"
-        "/schedule mostrar horários\n"
+        t(update, context, "welcome")
     )
+
+@check_auth
+async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    parts = context.args
+    if not parts:
+        return await update.message.reply_text(t(update, context, "setlang_usage"))
+    choice = parts[0].lower()
+    if choice not in ("pt-br", "en"):
+        return await update.message.reply_text(t(update, context, "setlang_usage"))
+
+    user_id = update.effective_user.id
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET lang = ? WHERE telegram_id = ?", (choice, user_id))
+    conn.commit()
+    conn.close()
+    context.user_data["lang"] = choice # Update cache
+    await update.message.reply_text(t(update, context, "setlang_success", language=choice))
 
 @check_auth
 async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -322,7 +411,7 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur = conn.cursor()
 
     today = datetime.now().date()
-    monday_of_week = today - timedelta(days=today.weekday())
+    monday_of_week = get_monday_of_week(today)
     friday_of_week = monday_of_week + timedelta(days=4) # Assuming classes are Mon-Fri
 
     cur.execute(
@@ -331,11 +420,15 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     items = cur.fetchall()
     if not items:
-        await update.message.reply_text(f"Nenhuma aula cadastrada para a semana de {monday_of_week.strftime('%d/%m')}. Envie uma imagem de horário para cadastrar.")
+        await update.message.reply_text(
+            t(update, context, "no_schedule", monday=monday_of_week.strftime('%d/%m'))
+        )
         conn.close()
         return
 
-    text = [f"📅 CRONOGRAMA SEMANAL ({monday_of_week.strftime('%d/%m')} - {friday_of_week.strftime('%d/%m')})"]
+    text = [
+        t(update, context, "schedule_header", monday=monday_of_week.strftime('%d/%m'), friday=friday_of_week.strftime('%d/%m'))
+    ]
     current_day_index = -1
     for r in items:
         if r['day_index'] != current_day_index:
@@ -365,11 +458,13 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     items = cur.fetchall()
     if not items:
-        await update.message.reply_text(f"Nenhuma aula cadastrada para hoje ({today.strftime('%d/%m')}).")
+        await update.message.reply_text(
+            t(update, context, "no_today_classes", today=today.strftime('%d/%m'))
+        )
         conn.close()
         return
 
-    text = [f"📅 CRONOGRAMA DE HOJE ({today.strftime('%d/%m')})"]
+    text = [t(update, context, "today_header", today=today.strftime('%d/%m'))]
     # Add a day header for today's classes
     text.append(f"\n{WEEKDAYS_PTBR_SHORT[today.weekday()]} ({today.strftime('%d/%m')})")
 
@@ -385,7 +480,7 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = context.args
     if len(parts) < 2:
-        await update.message.reply_text("Uso: /add_exam AAAA-MM-DD Assunto [notas]")
+        await update.message.reply_text(t(update, context, "add_exam_usage"))
         return
     date_text = parts[0]
     subject = parts[1]
@@ -393,7 +488,7 @@ async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         exam_date = datetime.fromisoformat(date_text).date()
     except ValueError:
-        await update.message.reply_text("Formato de data inválido. Use AAAA-MM-DD")
+        await update.message.reply_text(t(update, context, "invalid_date_format"))
         return
 
     conn = db_connect()
@@ -401,7 +496,9 @@ async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("INSERT INTO exams (subject, date, notes) VALUES (?, ?, ?)", (subject, exam_date.isoformat(), notes))
     conn.commit()
     conn.close()
-    await update.message.reply_text(f"Exame adicionado: {exam_date} - {subject} {notes}")
+    await update.message.reply_text(
+        t(update, context, "exam_added", date=exam_date, subject=subject, notes=notes)
+    )
 
 @check_auth
 async def list_exams(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -411,7 +508,7 @@ async def list_exams(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rows = cur.fetchall()
     conn.close()
     if not rows:
-        await update.message.reply_text("Nenhum exame agendado ainda.")
+        await update.message.reply_text(t(update, context, "no_exams"))
         return
     lines = ["📚 Próximos exames:"]
     for r in rows:
@@ -430,25 +527,27 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     skipped = cur.fetchone()["skipped"]
     rate = f"{attended / total * 100:.1f}%" if total > 0 else "N/A"
     await update.message.reply_text(
-        "📊 Estatísticas de Presença:\n"
-        f"Total de respostas: {total}\n"
-        f"Presente: {attended}\n"
-        f"Faltou: {skipped}\n"
-        f"Taxa de presença: {rate}"
+        t(
+            update,
+            context,
+            "stats_summary",
+            total=total,
+            attended=attended,
+            skipped=skipped,
+            rate=rate,
+        )
     )
     conn.close()
 
-@check_auth
+@check_owner
 async def upload_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_photo"] = True
-    await update.message.reply_text(
-        "Envie a imagem do horário agora, e eu a transformarei em suas aulas usando o Gemini."
-    )
+    await update.message.reply_text(t(update, context, "upload_prompt"))
 
-@check_auth
+@check_owner
 async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.user_data.get("awaiting_photo"):
-        await update.message.reply_text("Por favor, execute /upload primeiro.")
+        await update.message.reply_text(t(update, context, "execute_upload_first"))
         return
     context.user_data["awaiting_photo"] = False
 
@@ -462,11 +561,13 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Use the actual extension from the filename or guess from mime_type
         ext = os.path.splitext(update.message.document.file_name)[1] or ".png"
     else:
-        await update.message.reply_text("Por favor, envie uma imagem (JPG ou PNG).")
+        await update.message.reply_text(t(update, context, "send_image_only"))
         return
 
     path = f"/tmp/{file.file_unique_id}{ext}"
     await file.download_to_drive(path)
+
+    await update.message.reply_text(t(update, context, "image_received"))
 
     with open(path, "rb") as f:
         image_bytes = f.read()
@@ -499,18 +600,23 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
+        await update.message.reply_text(t(update, context, "extracting_schedule"))
         response, used_model = await generate_with_model_fallback(image_bytes, mime_type, prompt)
         structured_data = response.parsed
         if not structured_data or not structured_data.rows:
-            await update.message.reply_text("Gemini não conseguiu encontrar nenhum dado de aula nessa imagem.")
+            await update.message.reply_text(t(update, context, "no_rows_parsed"))
             return
+
+        await update.message.reply_text(
+            t(update, context, "parsed_rows", count=len(structured_data.rows))
+        )
 
         conn = db_connect()
         cur = conn.cursor()
 
         # --- NEW LOGIC FOR DELETING EXISTING CLASSES ---
         today = datetime.now().date()
-        monday_of_week = today - timedelta(days=today.weekday())
+        monday_of_week = get_monday_of_week(today)
         friday_of_week = monday_of_week + timedelta(days=4) # Assuming classes are Mon-Fri
 
         logger.info(f"Deleting classes for the week of {monday_of_week.isoformat()} to {friday_of_week.isoformat()}")
@@ -543,17 +649,21 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         conn.commit()
         conn.close()
-        await update.message.reply_text(f"Com sucesso, {inserted} aulas foram analisadas usando {used_model}.")
+        await update.message.reply_text(
+            t(update, context, "parsing_success", count=inserted, model=used_model)
+        )
 
     except Exception as e:
         logger.exception("A extração do Gemini falhou")
-        await update.message.reply_text(f"Erro durante a extração: {str(e)}")
+        await update.message.reply_text(
+            t(update, context, "extraction_error", error=str(e))
+        )
 
 async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     if not auth_user(user_id):
-        await query.answer("Unauthorized", show_alert=True)
+        await query.answer(t(update, context, "auth_denied"), show_alert=True)
         return
     if not query.data.startswith("attendance:"):
         await query.answer("Callback inválido")
@@ -615,10 +725,12 @@ async def send_exam_alerts(application):
 #     await send_exam_alerts(context.application)
 
 def main():
+    load_responses()
     init_db()
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", start))
+    app.add_handler(CommandHandler("setlang", set_language))
     app.add_handler(CommandHandler("upload", upload_command))
     app.add_handler(CommandHandler("schedule", schedule_text))
     app.add_handler(CommandHandler("today", today_classes))
