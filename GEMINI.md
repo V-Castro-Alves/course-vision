@@ -32,8 +32,8 @@ The project uses a `.env` file to configure sensitive information and customizab
 ## Bot Commands
 
 -   `/upload`: Initiates the process to send a schedule image for parsing.
--   `/schedule`: Displays all classes for the current week (Monday to Friday) in pt-br, with dates formatted as DD/MM.
--   `/today`: Displays only the classes scheduled for the current day in pt-br, with dates formatted as DD/MM.
+- `/schedule`: Displays all classes for the current week (Monday to Friday) in pt-br, with dates formatted as DD/MM and enhanced display.
+- `/today`: Displays only the classes scheduled for the current day in pt-br, with dates formatted as DD/MM and enhanced display.
 -   `/add_exam YYYY-MM-DD Subject [notes]`: Adds an exam to the schedule.
 -   `/exams`: Lists all scheduled exams.
 -   `/stats`: Shows attendance statistics.
