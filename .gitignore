@@ -214,3 +214,6 @@ database.db
 
 # csv files used for training/debugging
 *.csv
+
+# docs
+docs/

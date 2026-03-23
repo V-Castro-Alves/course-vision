@@ -29,12 +29,21 @@
 #### 2. File Structure
 ```text
 CourseVision/
-├── main.py            # Telegram Bot & Logic
-├── parsing.py         # Standalone Extraction Tool
-├── database.db        # SQLite Storage (Auto-generated)
+├── main.py            # Entry point for the bot (simplified description for README)
 ├── Dockerfile         # Container Definition
 ├── docker-compose.yml # Service Configuration
-└── requirements.txt   # Python Dependencies
+├── requirements.txt   # Python Dependencies
+├── .env.example       # Example environment variables
+├── core/
+│   ├── config.py      # Configuration settings
+│   ├── database.py    # Database interactions
+│   ├── handlers.py    # Telegram bot command handlers
+│   ├── i18n.py        # Internationalization setup
+│   ├── main.py        # Core bot logic
+│   ├── parsing.py     # Gemini vision parsing logic
+│   └── responses.json # Bot response messages
+└── data/
+    └── database.db    # SQLite Storage (Auto-generated)
 ```
 
 ### ▶️ Quick Start
@@ -85,7 +94,7 @@ CourseVision/
 -   **Model Fallback:** If the primary model (e.g., Gemini 2.0 Flash) runs out of quota, it automatically tries other available models.
 -   **Exam Alerts:** Notifications are sent 24h before and on the day of the exam.
 -   **Security:** `AUTHORIZED_USER_ID` restricts interaction to only your Telegram account.
--   **Attendance Tracking:** Attendance tracking is currently disabled due to the removal of detailed time extraction.
+-   **Attendance Tracking:** Attendance tracking is currently disabled as time extraction from Gemini's parsing has been removed, impacting the ability to accurately log attendance.
 
 ---
 
@@ -118,12 +127,21 @@ CourseVision/
 #### 2. Estrutura de Arquivos
 ```text
 CourseVision/
-├── main.py            # Lógica e Bot do Telegram
-├── parsing.py         # Ferramenta de Extração Independente
-├── database.db        # Armazenamento SQLite (Gerado Automaticamente)
+├── main.py            # Ponto de entrada para o bot
 ├── Dockerfile         # Definição do Contêiner
 ├── docker-compose.yml # Configuração do Serviço
-└── requirements.txt   # Dependências Python
+├── requirements.txt   # Dependências Python
+├── .env.example       # Exemplo de variáveis de ambiente
+├── core/
+│   ├── config.py      # Configurações
+│   ├── database.py    # Interações com o banco de dados
+│   ├── handlers.py    # Manipuladores de comandos do bot Telegram
+│   ├── i18n.py        # Configuração de internacionalização
+│   ├── main.py        # Lógica central do bot
+│   ├── parsing.py     # Lógica de análise de visão do Gemini
+│   └── responses.json # Mensagens de resposta do bot
+└── data/
+    └── database.db    # Armazenamento SQLite (Gerado Automaticamente)
 ```
 
 ### ▶️ Início Rápido
@@ -174,4 +192,4 @@ CourseVision/
 -   **Fallback de Modelo:** Se o modelo principal (por exemplo, Gemini 2.0 Flash) ficar sem cota, ele tenta automaticamente outros modelos disponíveis.
 -   **Alertas de Exame:** As notificações são enviadas 24h antes e no dia do exame.
 -   **Segurança:** `AUTHORIZED_USER_ID` restringe a interação apenas à sua conta do Telegram.
--   **Acompanhamento de Presença:** O acompanhamento de presença está atualmente desativado devido à remoção da extração detalhada de tempo.
+-   **Acompanhamento de Presença:** O acompanhamento de presença está atualmente desativado devido à remoção da extração de tempo do parsing do Gemini, impactando a capacidade de registrar a presença com precisão.

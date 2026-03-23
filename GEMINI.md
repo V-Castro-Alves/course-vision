@@ -8,6 +8,7 @@ This project uses the `google-genai` SDK and Structured Outputs to parse class s
 - **Structured Output:** Use Pydantic models for Gemini responses to ensure reliability. The `ClassRow` model now focuses on extracting `class_code`, `class_name`, `professor`, and `classroom`. Day and date information is assigned deterministically after extraction.
 - **Fallbacks:** Maintain the `generate_with_model_fallback` logic to handle quota issues by switching between available models (e.g., Gemini 2.5 Flash, 2.0 Flash, 3.0 Flash Preview, etc.).
 - **Validation:** Always normalize extracted strings (strip whitespace, capitalize days) before saving to the database.
+- **Documentation Updates:** When updating user-facing documentation (e.g., `README.md`), ensure all language versions (English and Portuguese) are updated consistently.
 
 ## Environment Variables
 
