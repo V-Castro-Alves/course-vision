@@ -28,7 +28,6 @@ The project uses a `.env` file to configure sensitive information and customizab
     -   When a schedule image is uploaded, existing classes for the *current week* (Monday to Friday) are deleted, and new classes are added.
     -   Date assignment is deterministic: the first two extracted classes are assigned to Monday of the current week, the next two to Tuesday, and so on, up to Friday.
 - **Time Format:** Time extraction has been removed from Gemini's parsing.
-- **Reminders:** Class reminders are currently disabled due to the removal of specific time extraction.
 
 ## Bot Commands
 
@@ -37,7 +36,6 @@ The project uses a `.env` file to configure sensitive information and customizab
 - `/today`: Displays only the classes scheduled for the current day in pt-br, with dates formatted as DD/MM and enhanced display.
 -   `/add_exam YYYY-MM-DD Subject [notes]`: Adds an exam to the schedule.
 -   `/exams`: Lists all scheduled exams.
--   `/stats`: Shows attendance statistics.
 
 ## Development Lifecycle
 

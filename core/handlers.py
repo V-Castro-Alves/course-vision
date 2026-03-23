@@ -123,79 +123,13 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
 
 
-@check_auth
-async def add_exam(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    parts = context.args
-    if len(parts) < 2:
-        await update.message.reply_text(t(update, context, "add_exam_usage"))
-        return
-    date_text = parts[0]
-    subject = parts[1]
-    notes = " ".join(parts[2:]) if len(parts) > 2 else ""
-
-    try:
-        exam_date = datetime.fromisoformat(date_text).date()
-    except ValueError:
-        await update.message.reply_text(t(update, context, "invalid_date_format"))
-        return
-
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO exams (subject, date, notes) VALUES (?, ?, ?)",
-        (subject, exam_date.isoformat(), notes),
-    )
-    conn.commit()
-    conn.close()
-
-    await update.message.reply_text(
-        t(update, context, "exam_added", date=exam_date, subject=subject, notes=notes)
-    )
 
 
-@check_auth
-async def list_exams(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM exams ORDER BY date")
-    rows = cur.fetchall()
-    conn.close()
-
-    if not rows:
-        await update.message.reply_text(t(update, context, "no_exams"))
-        return
-
-    lines = ["📚 Próximos exames:"]
-    for r in rows:
-        lines.append(f"{r['date']}: {r['subject']} ({r['notes']})")
-
-    await update.message.reply_text("\n".join(lines))
 
 
-@check_auth
-async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) as total FROM attendance")
-    total = cur.fetchone()["total"]
-    cur.execute("SELECT COUNT(*) as attended FROM attendance WHERE status='attended'")
-    attended = cur.fetchone()["attended"]
-    cur.execute("SELECT COUNT(*) as skipped FROM attendance WHERE status='skipped'")
-    skipped = cur.fetchone()["skipped"]
-    conn.close()
 
-    rate = f"{attended / total * 100:.1f}%" if total > 0 else "N/A"
-    await update.message.reply_text(
-        t(
-            update,
-            context,
-            "stats_summary",
-            total=total,
-            attended=attended,
-            skipped=skipped,
-            rate=rate,
-        )
-    )
+
+
 
 
 @check_owner
@@ -344,20 +278,4 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.edit_message_text(f"Presença para {class_date}: {status}")
 
 
-async def send_exam_alerts(application):
-    today = get_today_date()
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM exams")
-    exams = cur.fetchall()
-    conn.close()
 
-    for exam in exams:
-        exam_date = datetime.fromisoformat(exam["date"])
-        if exam_date == today + timedelta(days=1):
-            msg = f"📢 Exame amanhã: {exam['subject']} ({exam['notes']})"
-        elif exam_date == today:
-            msg = f"⚠️ Exame hoje: {exam['subject']} ({exam['notes']})"
-        else:
-            continue
-        await application.bot.send_message(chat_id=AUTHORIZED_USER_ID, text=msg)

@@ -86,7 +86,6 @@ CourseVision/
 -   `/today`: Displays only the classes scheduled for the current day with dates formatted as DD/MM and enhanced display.
 -   `/add_exam YYYY-MM-DD Subject [notes]`: Adds an exam to the schedule.
 -   `/exams`: Lists all scheduled exams.
--   `/stats`: Shows attendance statistics (attended/missed), if applicable. (Note: attendance tracking is currently disabled.)
 
 ### 💡 Notes
 
@@ -94,7 +93,6 @@ CourseVision/
 -   **Model Fallback:** If the primary model (e.g., Gemini 2.0 Flash) runs out of quota, it automatically tries other available models.
 -   **Exam Alerts:** Notifications are sent 24h before and on the day of the exam.
 -   **Security:** `AUTHORIZED_USER_ID` restricts interaction to only your Telegram account.
--   **Attendance Tracking:** Attendance tracking is currently disabled as time extraction from Gemini's parsing has been removed, impacting the ability to accurately log attendance.
 
 ---
 
@@ -184,7 +182,6 @@ CourseVision/
 -   `/today`: Exibe apenas as aulas programadas para o dia atual em português, com datas formatadas como DD/MM e exibição aprimorada.
 -   `/add_exam AAAA-MM-DD Assunto [notas]`: Adiciona um exame à agenda.
 -   `/exams`: Lista todos os exames agendados.
--   `/stats`: Mostra as estatísticas de presença (presente/faltou), se aplicável. (Nota: o acompanhamento de presença está atualmente desativado.)
 
 ### 💡 Notas
 
@@ -192,4 +189,3 @@ CourseVision/
 -   **Fallback de Modelo:** Se o modelo principal (por exemplo, Gemini 2.0 Flash) ficar sem cota, ele tenta automaticamente outros modelos disponíveis.
 -   **Alertas de Exame:** As notificações são enviadas 24h antes e no dia do exame.
 -   **Segurança:** `AUTHORIZED_USER_ID` restringe a interação apenas à sua conta do Telegram.
--   **Acompanhamento de Presença:** O acompanhamento de presença está atualmente desativado devido à remoção da extração de tempo do parsing do Gemini, impactando a capacidade de registrar a presença com precisão.
