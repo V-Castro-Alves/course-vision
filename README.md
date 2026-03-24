@@ -1,206 +1,146 @@
-# 🛰️ CourseVision (ClassClerkBot)
+[English](#english) | [Português](#português-brasil)
 
-## English
+# 👁️‍🗨️CourseVision (ClassClerkBot)
 
-**CourseVision** is an AI-integrated academic assistant designed to automate the bridge between static college schedules and real-time mobile coordination. Now powered by Gemini 2.0/1.5 Flash with Structured Outputs.
+> **Transform your static college schedule into a dynamic AI-managed calendar via Telegram.**
 
-### ✨ Features
+![Demo](link-to-your-gif-or-screenshot)
 
-- **Screenshot Parsing:** Upload a photo of your schedule; Gemini extracts class details (Subject, Code, Professor, Classroom). Day and date information is then *deterministically assigned* based on the current week's Monday (first two classes to Monday, next two to Tuesday, etc., up to Friday). Existing classes for the current week are automatically replaced upon new upload.
-- **Privacy Lock:** User ID verification ensures only who YOU choose can access the bot.
+[![Python 3.14+](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
+[![Gemini 2.0](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-orange.svg)](https://aistudio.google.com/)
+[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Telegram](https://img.shields.io/badge/Telegram-%230088cc.svg?logo=telegram&logoColor=white)](https://www.telegram.org/)
 
-### 🛠️ Tech Stack
 
-- **Language:** Python 3.10+
-- **AI Brain:** Google Gemini (google-genai SDK)
-- **Bot Framework:** `python-telegram-bot`
-- **Database:** SQLite3
-- **Data Validation:** Pydantic
-- **Deployment:** Docker & Docker Compose
+## ✨ Key Features
 
-### 🚀 Deployment Guide
+*   **📸 Intelligent OCR:** Snap a photo of your printed or digital schedule. Gemini extracts Subjects, Codes, Professors, and Classrooms with high precision.
+*   **🗓️ Deterministic Scheduling:** Automatically maps extracted classes to the current week (Monday-Friday) using a smart 2-per-day logic.
+*   **🔄 Auto-Sync:** Uploading a new schedule automatically wipes the old one for that week—no manual cleanup required.
+*   **🔒 Granular Privacy:** Restrict access to specific Telegram User IDs.
+*   **🤖 Model Resilience:** Automatic fallback logic ensures the bot stays online even if primary API quotas are hit.
 
-#### 1. Prerequisites
-- A **Gemini API Key** from [Google AI Studio](https://aistudio.google.com/).
-- A **Telegram Bot Token** from [@BotFather](https://t.me/botfather).
-- Your **Telegram User ID** (Get it from [@userinfobot](https://t.me/userinfobot)).
-- **Authorized Telegram User IDs** (optional, comma-separated).
+---
 
-#### 2. File Structure
-```text
-CourseVision/
-├── main.py            # Entry point for the bot (simplified description for README)
-├── Dockerfile         # Container Definition
-├── docker-compose.yml # Service Configuration
-├── requirements.txt   # Python Dependencies
-├── .env.example       # Example environment variables
-├── core/
-│   ├── config.py      # Configuration settings
-│   ├── database.py    # Database interactions
-│   ├── handlers.py    # Telegram bot command handlers
-│   ├── i18n.py        # Internationalization setup
-│   ├── main.py        # Core bot logic
-│   ├── parsing.py     # Gemini vision parsing logic
-│   └── responses.json # Bot response messages
-└── data/
-    └── database.db    # SQLite Storage (Auto-generated)
+## 🛠️ Architecture & Tech
+CourseVision acts as the intelligent backend for schedule processing and management. It interfaces seamlessly with **ClassClerkBot**, your dedicated ✈️ Telegram bot, providing an intuitive chat interface for all your scheduling needs.
+
+-   **Core:** `Python 3.14` with `python-telegram-bot`
+-   **Vision Engine:** `google-genai` (Gemini 2.0 Flash) utilizing **Structured Outputs**
+-   **Data Layer:** `SQLite` + `Pydantic` for strict schema validation
+-   **DevOps:** Fully containerized with `Docker` & `Docker Compose`
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+1.  **API Keys:** Get a [Gemini API Key](https://aistudio.google.com/) and a [Telegram Token](https://t.me/botfather).
+2.  **ID:** Find your ID via [@userinfobot](https://t.me/userinfobot).
+
+### 2. Setup
+```bash
+# Clone the repository
+git clone [https://github.com/youruser/CourseVision.git](https://github.com/youruser/CourseVision.git)
+cd CourseVision
+
+# Create environment file
+cp .env.example .env
+# Edit .env with your credentials
 ```
 
-### ▶️ Quick Start
+### 3. Run
+**Using Docker (Recommended):**
+```bash
+docker compose up --build -d
+```
+**Using Python:**
+```bash
+pip install -r requirements.txt
+python main.py
+```
 
-1.  Create `.env` in project root:
+---
 
-    ```bash
-    TELEGRAM_TOKEN=your_bot_token
-    AUTHORIZED_USER_ID=your_telegram_user_id
-    TELEGRAM_USERS_IDS=authorized_user_ids (optional, comma-separated)
-    GEMINI_API_KEY=your_gemini_api_key
-    GEMINI_MODEL=gemini-2.0-flash (optional)
-    DATABASE_PATH=database.db
-    DEBUG=TRUE (optional)
-    ```
+## 📌 Usage Flow
 
-2.  Install dependencies:
+1.  **/start** to initialize.
+2.  **/upload** to prep the AI.
+3.  **Attach Image** — Send the schedule photo.
+4.  **/today** or **/schedule** to see your week at a glance.
 
-    ```bash
-    python3 -m pip install -r requirements.txt
-    ```
+---
 
-3.  Run locally:
+## 5. Final Polish Tips
 
-    ```bash
-    python3 main.py
-    ```
+*   **License:** This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+*   **Deterministic Logic Warning:** Note that several design and architectural decisions were made based on the specific structure needed by the author. For your personal use, it is recommended to adapt the logic to better fit the format of your needs.
 
-4.  Or run with Docker:
-
-    ```bash
-    docker compose up --build -d
-    ```
-
-### 📌 Telegram Commands
-
--   `/start` (or `/help`): Displays the welcome message and command usage.
--   `/upload`: Notifies the bot that you will send a schedule image. The bot will process the image, assign dates for the current week (2 classes per day, Monday to Friday), and replace any existing schedules for the week.
--   Send the image after `/upload`: Gemini will analyze it and insert the classes into the database.
--   `/schedule`: Lists all classes for the current week (Monday to Friday) with dates formatted as DD/MM and enhanced display.
--   `/today`: Displays only the classes scheduled for the current day with dates formatted as DD/MM and enhanced display.
-
-### 💡 Notes
-
--   **Smart Parsing:** The bot uses Gemini's Structured Output to extract tabular data from images. Day and date information is deterministically assigned after extraction, and uploading a new schedule automatically replaces the current week's schedule.
--   **Model Fallback:** If the primary model (e.g., Gemini 2.0 Flash) runs out of quota, it automatically tries other available models.
--   **Security:** `AUTHORIZED_USER_ID` and `TELEGRAM_USERS_IDS` restricts interaction to only the Telegram accounts you choose.
-
-### 📚 Future Enhancements (To-Dos)
-
--   **Enhanced Exam Management:** Implement the ability to add and manage exam dates, including customizable reminders (e.g., one day before, and right before the exam).
--   **Attendance Tracking:** Develop features to track attendance for classes and record instances of skipped classes.
--   **Configurable Class Reminders:** Allow users to set reminders for regular classes (e.g., 15 minutes before they start).
--   **Manual Schedule Editing:** Enable users to manually add, remove, or modify individual classes in their schedule.
--   **Multi-week and Recurring Schedules:** Extend the system to support parsing and managing schedules spanning multiple weeks, and implement functionality for recurring schedules across semesters or academic years.
--   **User Preferences and Customization:** Introduce user-specific settings for reminder timings, default language, and other personalized options.
 
 ---
 
 ## Português (Brasil)
 
-**CourseVision** é um assistente acadêmico integrado a IA, projetado para automatizar a ponte entre horários estáticos de faculdade e a coordenação móvel em tempo real. Agora alimentado pelo Gemini 2.0/1.5 Flash com Saídas Estruturadas.
+### ✨ Funcionalidades Principais
 
-### ✨ Funcionalidades
+*   **📸 OCR Inteligente:** Tire uma foto do seu horário impresso ou digital. O Gemini extrai Assuntos, Códigos, Professores e Salas de Aula com alta precisão.
+*   **🗓️ Agendamento Determinístico:** Mapeia automaticamente as aulas extraídas para a semana atual (segunda a sexta-feira) usando uma lógica inteligente de 2 aulas por dia.
+*   **🔄 Sincronização Automática:** Fazer upload de um novo horário apaga automaticamente o antigo para aquela semana — nenhuma limpeza manual é necessária.
+*   **🔒 Privacidade Granular:** Restringe o acesso a IDs de Usuários específicos do Telegram.
+*   **🤖 Resiliência do Modelo:** A lógica de fallback automático garante que o bot permaneça online mesmo se as cotas da API principal forem atingidas.
 
--   **Análise de Imagem de Horário:** Envie uma foto do seu horário; o Gemini extrai os detalhes da aula (Assunto, Código, Professor, Sala de Aula). As informações de dia e data são então *atribuídas deterministicamente* com base na segunda-feira da semana atual (duas primeiras aulas para segunda, as próximas duas para terça, etc., até sexta-feira). As aulas existentes para a semana atual são automaticamente substituídas ao fazer um novo upload.
--   **Bloqueio de Privacidade:** A verificação do ID de usuário garante que apenas quem VOCÊ escolher possa acessar o bot.
+---
 
-### 🛠️ Pilha de Tecnologia
+## 🛠️ Arquitetura e Tecnologia
+CourseVision atua como o backend inteligente para processamento e gerenciamento de dados de horário. Ele se integra perfeitamente com o **ClassClerkBot**, seu ✈️ bot dedicado do Telegram, fornecendo uma interface de chat intuitiva para todas as suas necessidades de agendamento.
 
--   **Linguagem:** Python 3.10+
--   **IA Central:** Google Gemini (SDK google-genai)
--   **Estrutura do Bot:** `python-telegram-bot`
--   **Banco de Dados:** SQLite3
--   **Validação de Dados:** Pydantic
--   **Implantação:** Docker e Docker Compose
+-   **Core:** `Python 3.14` com `python-telegram-bot`
+-   **Mecanismo de Visão:** `google-genai` (Gemini 2.0 Flash) utilizando **Saídas Estruturadas**
+-   **Camada de Dados:** `SQLite` + `Pydantic` para validação rigorosa de esquema
+-   **DevOps:** Totalmente conteinerizado com `Docker` e `Docker Compose`
 
-### 🚀 Guia de Implantação
+---
 
-#### 1. Pré-requisitos
--   Uma **Chave de API do Gemini** do [Google AI Studio](https://aistudio.google.com/).
--   Um **Token de Bot do Telegram** do [@BotFather](https://t.me/botfather).
--   Seu **ID de Usuário do Telegram** (Obtenha-o em [@userinfobot](https://t.me/userinfobot)).
--   **IDs de Usuários Autorizados do Telegram** (opcional, separados por vírgula).
+## 🚀 Início Rápido
 
-#### 2. Estrutura de Arquivos
-```text
-CourseVision/
-├── main.py            # Ponto de entrada para o bot
-├── Dockerfile         # Definição do Contêiner
-├── docker-compose.yml # Configuração do Serviço
-├── requirements.txt   # Dependências Python
-├── .env.example       # Exemplo de variáveis de ambiente
-├── core/
-│   ├── config.py      # Configurações
-│   ├── database.py    # Interações com o banco de dados
-│   ├── handlers.py    # Manipuladores de comandos do bot Telegram
-│   ├── i18n.py        # Configuração de internacionalização
-│   ├── main.py        # Lógica central do bot
-│   ├── parsing.py     # Lógica de análise de visão do Gemini
-│   └── responses.json # Mensagens de resposta do bot
-└── data/
-    └── database.db    # Armazenamento SQLite (Gerado Automaticamente)
+### 1. Pré-requisitos
+1.  **Chaves de API:** Obtenha uma [Chave de API do Gemini](https://aistudio.google.com/) e um [Token do Telegram](https://t.me/botfather).
+2.  **ID:** Encontre seu ID via [@userinfobot](https://t.me/userinfobot).
+
+### 2. Configuração
+```bash
+# Clone o repositório
+git clone [https://github.com/youruser/CourseVision.git](https://github.com/youruser/CourseVision.git)
+cd CourseVision
+
+# Crie o arquivo de ambiente
+cp .env.example .env
+# Edite .env com suas credenciais
 ```
 
-### ▶️ Início Rápido
+### 3. Execução
+**Usando Docker (Recomendado):**
+```bash
+docker compose up --build -d
+```
+**Usando Python:**
+```bash
+pip install -r requirements.txt
+python main.py
+```
 
-1.  Crie o arquivo `.env` na raiz do projeto:
+---
 
-    ```bash
-    TELEGRAM_TOKEN=seu_token_do_bot
-    AUTHORIZED_USER_ID=seu_id_de_usuario_do_telegram
-    TELEGRAM_USERS_IDS=ids_dos_usuarios_autorizados (opcional, separados por vírgula)
-    GEMINI_API_KEY=sua_chave_de_api_do_gemini
-    GEMINI_MODEL=gemini-2.0-flash (opcional)
-    DATABASE_PATH=database.db
-    DEBUG=TRUE (opcional)
-    ```
+## 📌 Fluxo de Uso
 
-2.  Instale as dependências:
+1.  **/start** para inicializar.
+2.  **/upload** para preparar a IA.
+3.  **Anexar Imagem** — Envie a foto do horário.
+4.  **/today** ou **/schedule** para ver sua semana rapidamente.
 
-    ```bash
-    python3 -m pip install -r requirements.txt
-    ```
+---
 
-3.  Execute localmente:
+## 5. Dicas Finais de Polimento
 
-    ```bash
-    python3 main.py
-    ```
-
-4.  Ou execute com Docker:
-
-    ```bash
-    docker compose up --build -d
-    ```
-
-### 📌 Comandos do Telegram
-
--   `/start` (ou `/help`): Mostra a mensagem de boas-vindas e uso dos comandos.
--   `/upload`: Notifica o bot que você enviará uma imagem de horário. O bot processará a imagem, atribuirá datas para a semana atual (2 aulas por dia, de segunda a sexta) e substituirá quaisquer horários existentes para a semana.
--   Envie a imagem após `/upload`: O Gemini a analisará e inserirá as aulas no banco de dados.
--   `/schedule`: Lista todas as aulas da semana atual (segunda a sexta-feira) em português, com datas formatadas como DD/MM e exibição aprimorada.
--   `/today`: Exibe apenas as aulas programadas para o dia atual em português, com datas formatadas como DD/MM e exibição aprimorada.
-
-### 💡 Notas
-
--   **Análise Inteligente:** O bot usa a Saída Estruturada do Gemini para extrair dados tabulares de imagens. As informações de dia e data são atribuídas deterministicamente após a extração, e o upload de um novo horário substitui automaticamente o horário da semana atual.
--   **Fallback de Modelo:** Se o modelo principal (por exemplo, Gemini 2.0 Flash) ficar sem cota, ele tenta automaticamente outros modelos disponíveis.
--   **Alertas de Exame:** As notificações são enviadas 24h antes e no dia do exame.
--   **Segurança:** `AUTHORIZED_USER_ID` e `TELEGRAM_USERS_IDS` restringem a interação apenas às contas do Telegram que você escolher.
-
-### 📚 Próximos Aprimoramentos (To-Dos)
-
--   **Gerenciamento Aprimorado de Exames:** Implementar a capacidade de adicionar e gerenciar datas de exames, incluindo lembretes personalizáveis (por exemplo, um dia antes e imediatamente antes do exame).
--   **Controle de Presença:** Desenvolver funcionalidades para rastrear a presença em aulas e registrar as ausências.
--   **Lembretes Configuráveis para Aulas Regulares:** Permitir que os usuários configurem lembretes para aulas regulares (por exemplo, 15 minutos antes do início da aula).
--   **Edição Manual de Horários:** Habilitar os usuários a adicionar, remover ou modificar manualmente aulas individuais em seus horários.
--   **Horários Multissemanais e Recorrentes:** Estender o sistema para suportar a análise e o gerenciamento de horários que abrangem múltiplas semanas, e implementar funcionalidades para horários recorrentes em semestres ou anos acadêmicos.
--   **Preferências e Personalização do Usuário:** Introduzir configurações específicas do usuário para horários de lembretes, idioma padrão e outras opções personalizadas.
+*   **Licença:** Este projeto é licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+*   **Aviso de Lógica Determinística:** Observe que várias decisões de design e projeto, foram feitas com base na estrutura específica necessitada pelo autor. Para a sua utilização pessoal, é recomendado adaptar a lógica para que se encaixe melhor com o formato da sua necessidade.
