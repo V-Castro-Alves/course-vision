@@ -30,6 +30,26 @@ CourseVision acts as the intelligent backend for schedule processing and managem
 -   **Data Layer:** `SQLite` + `Pydantic` for strict schema validation
 -   **DevOps:** Fully containerized with `Docker` & `Docker Compose`
 
+## Orchestration
+CourseVision acts as the central orchestrator, managing the lifecycle of your schedule from image capture to database persistence.
+```mermaid
+graph TD
+    User((📱 Telegram User)) <-->|Commands / Image| Bot[✈️ ClassClerkBot Interface]
+    
+    subgraph "Core System"
+        Bot <-->|API Calls| CV[👁️ CourseVision Orchestrator]
+        
+        CV -->|1. Image + Prompt| Gemini[🤖 Gemini 2.0 Flash]
+        Gemini -->|2. Structured JSON| CV
+        
+        CV -->|3. Mapping & Validation| Map[📅 Deterministic Logic]
+        Map --> CV
+        
+        CV <-->|4. Read/Write| DB[(🗄️ SQLite Database)]
+    end
+
+style CV fill:#008000,stroke:#333,stroke-width:4px
+```
 ---
 
 ## 🚀 Quick Start
