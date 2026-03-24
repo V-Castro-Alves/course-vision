@@ -2,9 +2,9 @@
 
 # 👁️‍🗨️CourseVision (ClassClerkBot)
 
-> **Transform your static college schedule into a dynamic AI-managed calendar via Telegram.**
+![logo](logo.jpeg)
 
-![Demo](link-to-your-gif-or-screenshot)
+> **Transform your static college schedule into a dynamic AI-managed calendar via Telegram.**
 
 [![Python 3.14+](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
 [![Gemini 2.0](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-orange.svg)](https://aistudio.google.com/)
