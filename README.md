@@ -2,7 +2,9 @@
 
 # 👁️‍🗨️CourseVision (ClassClerkBot)
 
-![logo](logo.jpeg)
+<p align="center">
+  <img src="logo.jpeg" alt="logo" width="250" style="display: block; margin: 0 auto;" />
+</p>
 
 > **Transform your static college schedule into a dynamic AI-managed calendar via Telegram.**
 
