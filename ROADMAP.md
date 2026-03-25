@@ -27,6 +27,7 @@
 - [x] Single-image upload flow via Telegram attachment
 
 ### Docs & Community
+- [X] **Visual Architecture Diagram**: Use a Mermaid.js diagram in README
 - [x] Bilingual README (English + Português)
 - [x] Quick Start guide with Docker and Python paths
 - [x] MIT License
@@ -39,6 +40,7 @@
 
 ### New Features
 - [ ] **Change /upload command behavior**: Make so that the user can send a photo without needing to type `/upload` first. The bot will automatically detect that a photo has been sent and will ask if it should be processed.
+- [ ] `/remind` command — set a Telegram reminder X minutes before a class
 
 ### Technical Improvements
 - [ ] Improve OCR prompt engineering for edge-case schedule formats
@@ -52,7 +54,6 @@
 
 ### Docs & Community
 - [ ] Add `CONTRIBUTING.md` with contribution guidelines
-- [ ] Document the deterministic scheduling logic so others can adapt it
 
 ---
 
@@ -61,7 +62,6 @@
 > Validated ideas queued for future development.
 
 ### New Features
-- [ ] `/remind` command — set a Telegram reminder X minutes before a class
 - [ ] Export schedule to `.ics` / Google Calendar format
 - [ ] **Visual Schedule Generation**: Use a library like Pillow to generate a clean, color-coded .png calendar of the week and send it back to the user after /upload.
 
@@ -79,13 +79,8 @@
 - [ ] Support for sending schedule as a formatted image/PDF response
 
 ### Docs & Community
-- [ ] Architecture diagram showing bot ↔ backend ↔ Gemini flow
 - [ ] Video walkthrough / GIF demo for the README
-- [ ] `CHANGELOG.md` to track releases
 - [ ] GitHub issue templates (bug report, feature request)
-- [ ] Publish to Docker Hub for one-command deployment
-- [ ] **Visual Architecture Diagram**: Use a Mermaid.js diagram in README
-- [ ] **Detailed .env.example**: Ensure the README explains that ALLOWED_TELEGRAM_IDS should be a comma-separated list
 - [ ] **"Troubleshooting" Section**: Add a section in the README about how to handle "hallucinations." Advise users to take photos with high contrast and no glare
 
 ---
