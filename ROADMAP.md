@@ -38,7 +38,7 @@
 > Actively being worked on or planned for the immediate next cycle.
 
 ### New Features
-- [ ] `/next` command — show tomorrow's classes specifically
+- [ ] **Change /upload command behavior**: Make so that the user can send a photo without needing to type `/upload` first. The bot will automatically detect that a photo has been sent and will ask if it should be processed.
 
 ### Technical Improvements
 - [ ] Improve OCR prompt engineering for edge-case schedule formats
