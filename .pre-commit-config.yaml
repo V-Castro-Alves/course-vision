@@ -22,11 +22,13 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: ["-r", ".", "-x", "./venv"]
+        args: ["-x", "./venv"]
   - repo: local
     hooks:
       - id: pip-audit
         name: pip-audit
         entry: pip-audit
-        language: system
-        types: [python]
+        language: python
+        files: ^requirements\.txt$
+        additional_dependencies: ['pip-audit==2.10.0']
+        args: ["-r", "requirements.txt"]

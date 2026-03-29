@@ -3,7 +3,7 @@ import sqlite3
 import mimetypes
 from datetime import datetime, timedelta
 import tempfile
-import functools
+
 
 from telegram import Update
 from telegram.ext import ContextTypes
