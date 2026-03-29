@@ -29,6 +29,15 @@ repos:
         name: pip-audit
         entry: pip-audit
         language: python
-        files: ^requirements\.txt$
+        pass_filenames: false
         additional_dependencies: ['pip-audit==2.10.0']
         args: ["-r", "requirements.txt"]
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: bash -c 'PYTHONPATH=. venv/bin/pytest'
+        language: system
+        pass_filenames: false
+        always_run: true
+        types: [python]

@@ -35,4 +35,9 @@ jobs:
       run: docker compose -f docker-compose.ci.yml run --rm app-ci "python -m bandit -r /app -x /app/venv"
 
     - name: Run Pytest
-      run: docker compose -f docker-compose.ci.yml run --rm app-ci "PYTHONPATH=. pytest"
+      run: |
+        docker compose -f docker-compose.ci.yml run --rm \
+          -e TELEGRAM_TOKEN="${{ secrets.TELEGRAM_TOKEN }}" \
+          -e ALLOWED_TELEGRAM_IDS="${{ secrets.ALLOWED_TELEGRAM_IDS }}" \
+          -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+          app-ci "PYTHONPATH=. pytest"
