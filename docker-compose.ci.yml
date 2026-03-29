@@ -1,0 +1,18 @@
+services:
+  app-ci:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # This entrypoint allows command strings to be run correctly from compose run
+    entrypoint: ["bash", "-lc"]
+    volumes:
+      # Mount the current directory into the container to access source code and configurations
+      - .:/app
+    environment:
+      # Set environment variables required by your application or tests
+      # For example, if your tests need access to a database, you might link it
+      - DATABASE_URL=sqlite:///./test.db # Example, adjust as needed for your tests
+    # No ports needed for CI checks
+    # Depend on any other services your tests might need (e.g., database)
+    # depends_on:
+    #   - db

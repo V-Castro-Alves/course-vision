@@ -32,6 +32,14 @@ CourseVision acts as the intelligent backend for schedule processing and managem
 -   **Data Layer:** `SQLite` + `Pydantic` for strict schema validation
 -   **DevOps:** Fully containerized with `Docker` & `Docker Compose`
 
+### CI/CD & Quality Gates
+To ensure code quality and project stability, CourseVision employs a robust CI/CD pipeline and local quality gates:
+
+*   **Tools:** Ruff (linting/formatting), pip-audit (dependency security), Bandit (static analysis security), Pytest (unit testing).
+*   **Docker Integration:** All CI checks run within Docker containers, ensuring a consistent and isolated environment.
+*   **GitHub Actions:** Automated workflow (`.github/workflows/ci.yml`) runs all checks on `push` and `pull_request` to `main`.
+*   **Local Checks:** `docker compose` commands are provided for local execution of these checks without needing local Python installations.
+
 ## Orchestration
 CourseVision acts as the central orchestrator, managing the lifecycle of your schedule from image capture to database persistence.
 ```mermaid
@@ -121,6 +129,34 @@ CourseVision atua como o backend inteligente para processamento e gerenciamento 
 -   **Camada de Dados:** `SQLite` + `Pydantic` para validação rigorosa de esquema
 -   **DevOps:** Totalmente conteinerizado com `Docker` e `Docker Compose`
 
+### CI/CD e Portões de Qualidade
+Para garantir a qualidade do código e a estabilidade do projeto, o CourseVision emprega um pipeline robusto de CI/CD e portões de qualidade locais:
+
+*   **Ferramentas:** Ruff (linting/formatação), pip-audit (segurança de dependências), Bandit (segurança de análise estática), Pytest (teste de unidade).
+*   **Integração Docker:** Todas as verificações de CI são executadas dentro de contêineres Docker, garantindo um ambiente consistente e isolado.
+*   **GitHub Actions:** O fluxo de trabalho automatizado (`.github/workflows/ci.yml`) executa todas as verificações em `push` e `pull_request` para `main`.
+*   **Verificações Locais:** Comandos `docker compose` são fornecidos para execução local dessas verificações sem a necessidade de instalações locais de Python.
+
+## Orchestration
+CourseVision acts as the central orchestrator, managing the lifecycle of your schedule from image capture to database persistence.
+```mermaid
+graph TD
+    User((📱 Telegram User)) <-->|Commands / Image| Bot[✈️ ClassClerkBot Interface]
+    
+    subgraph "Core System"
+        Bot <-->|API Calls| CV[👁️ CourseVision Orchestrator]
+        
+        CV -->|1. Image + Prompt| Gemini[🤖 Gemini 2.0 Flash]
+        Gemini -->|2. Structured JSON| CV
+        
+        CV -->|3. Mapping & Validation| Map[📅 Deterministic Logic]
+        Map --> CV
+        
+        CV <-->|4. Read/Write| DB[(🗄️ SQLite Database)]
+    end
+
+style CV fill:#008000,stroke:#333,stroke-width:4px
+```
 ---
 
 ## 🚀 Início Rápido

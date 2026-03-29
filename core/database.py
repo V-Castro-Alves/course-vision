@@ -80,10 +80,14 @@ def check_auth(func):
         if not auth_user(user_id):
             if update.message:
                 from .i18n import t
+
                 await update.message.reply_text(t(update, context, "auth_denied"))
             elif update.callback_query:
                 from .i18n import t
-                await update.callback_query.answer(t(update, context, "auth_denied"), show_alert=True)
+
+                await update.callback_query.answer(
+                    t(update, context, "auth_denied"), show_alert=True
+                )
             return
         return await func(update, context)
 
@@ -95,10 +99,13 @@ def check_owner(func):
         user_id = update.effective_user.id if update.effective_user else None
         if not is_owner(user_id):
             from .i18n import t
+
             if update.message:
                 await update.message.reply_text(t(update, context, "auth_denied"))
             elif update.callback_query:
-                await update.callback_query.answer(t(update, context, "auth_denied"), show_alert=True)
+                await update.callback_query.answer(
+                    t(update, context, "auth_denied"), show_alert=True
+                )
             return
         return await func(update, context)
 

@@ -34,10 +34,16 @@ def looks_like_class_code(value: str) -> bool:
     if not token:
         return False
 
-    if not re.fullmatch(r"[A-Za-z0-9/]+", token):
+    if not re.fullmatch(
+        r"[A-Za-z0-9/.-]+", token
+    ):  # Added '-' and '.' to allowed characters
         return False
 
-    return any(ch.isalpha() for ch in token)
+    # Must contain at least one letter and (at least one digit OR a '/')
+    has_alpha = any(ch.isalpha() for ch in token)
+    has_digit_or_slash = any(ch.isdigit() or ch == "/" for ch in token)
+
+    return has_alpha and has_digit_or_slash
 
 
 def split_class_code_and_name(class_code: str, class_name: str) -> tuple[str, str]:
@@ -53,7 +59,7 @@ def split_class_code_and_name(class_code: str, class_name: str) -> tuple[str, st
     if code and name:
         prefixed_name = f"{code}-"
         if name.startswith(prefixed_name):
-            name = name[len(prefixed_name):].strip()
+            name = name[len(prefixed_name) :].strip()
 
     return code, name
 
@@ -67,7 +73,7 @@ def normalize_classroom(value: str) -> str:
         return classroom
 
     classroom = re.sub(
-        r"(?<=\d)\s+(?=(LAB\.?|SALA|ROOM)\b)",
+        r"(?<=\d)\s+(?=(LAB\.?|SALA|ROOM(?!\s*\d))\b)",
         "/",
         classroom,
         count=1,
@@ -87,7 +93,7 @@ def normalize_row(row: ClassRow) -> ClassRow:
         lowered = class_name.lower()
         marker_index = lowered.rfind(marker)
         if marker_index != -1:
-            professor = class_name[marker_index + len(marker):].strip()
+            professor = class_name[marker_index + len(marker) :].strip()
             class_name = class_name[:marker_index].strip(" -")
 
     return ClassRow(
@@ -133,8 +139,6 @@ def get_today_date() -> datetime.date:
 
 
 def get_monday_of_week(today: datetime.date) -> datetime.date:
-    if today.weekday() == 6:
-        return today + timedelta(days=1)
     return today - timedelta(days=today.weekday())
 
 
@@ -154,7 +158,9 @@ def assign_dates_to_classes(rows: List[ClassRow]) -> List[ClassRow]:
         assigned_count = class_assignments_per_day.get(current_day_name, 0)
 
         row.day_index = monday_of_week.weekday() + current_day_offset
-        row.class_date = (monday_of_week + timedelta(days=current_day_offset)).isoformat()
+        row.class_date = (
+            monday_of_week + timedelta(days=current_day_offset)
+        ).isoformat()
 
         assigned_rows.append(row)
         class_assignments_per_day[current_day_name] = assigned_count + 1
@@ -187,12 +193,16 @@ async def generate_with_model_fallback(image_bytes, mime_type, prompt):
             return response, model_id
         except genai_errors.ClientError as err:
             status_code = getattr(err, "status_code", None)
-            if status_code is None and ("429" in str(err) or "RESOURCE_EXHAUSTED" in str(err)):
+            if status_code is None and (
+                "429" in str(err) or "RESOURCE_EXHAUSTED" in str(err)
+            ):
                 status_code = 429
 
             if status_code == 429 or status_code == "429":
                 last_quota_error = err
-                logger.warning(f"Quota exceeded for model '{model_id}'. Waiting 2s before next model...")
+                logger.warning(
+                    f"Quota exceeded for model '{model_id}'. Waiting 2s before next model..."
+                )
                 await asyncio.sleep(2)
                 continue
 

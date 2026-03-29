@@ -2,11 +2,13 @@ import os
 import sqlite3
 import mimetypes
 from datetime import datetime, timedelta
+import tempfile
+import functools
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from .config import AUTHORIZED_USER_ID, WEEKDAYS_PTBR_SHORT, logger
+from .config import WEEKDAYS_PTBR_SHORT, logger
 from .database import db_connect, check_auth, check_owner, auth_user
 from .i18n import t
 from .parsing import (
@@ -39,7 +41,9 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     conn.close()
     context.user_data["lang"] = choice
-    await update.message.reply_text(t(update, context, "setlang_success", language=choice))
+    await update.message.reply_text(
+        t(update, context, "setlang_success", language=choice)
+    )
 
 
 @check_auth
@@ -123,15 +127,6 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
 
 
-
-
-
-
-
-
-
-
-
 @check_owner
 async def upload_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_photo"] = True
@@ -150,20 +145,27 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo = update.message.photo[-1]
         file = await photo.get_file()
         ext = ".jpg"
-    elif update.message.document and update.message.document.mime_type.startswith("image/"):
+    elif update.message.document and update.message.document.mime_type.startswith(
+        "image/"
+    ):
         file = await update.message.document.get_file()
         ext = os.path.splitext(update.message.document.file_name)[1] or ".png"
     else:
         await update.message.reply_text(t(update, context, "send_image_only"))
         return
 
-    path = f"/tmp/{file.file_unique_id}{ext}"
+    # Use NamedTemporaryFile for secure temporary file handling
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as temp_file:
+        path = temp_file.name
     await file.download_to_drive(path)
 
     await update.message.reply_text(t(update, context, "image_received"))
 
     with open(path, "rb") as f:
         image_bytes = f.read()
+
+    # Clean up the temporary file
+    os.unlink(path)
 
     mime_type, _ = mimetypes.guess_type(path)
     if not mime_type:
@@ -180,20 +182,24 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
 
     prompt = (
-        "Extract only class schedule entries from this Excel screenshot. "
-        "Ignore title/header rows, including semester labels like '5o Semestre ...' "
-        "and column headers like 'Sala'. "
-        "For each class row, return exactly these fields: "
-        "class_code (course code only, e.g., TES/II), "
-        "class_name (subject only, without the class code), "
-        "professor (teacher name only), "
-        "classroom (room/lab/location only). "
-        "If there are multiple classrooms in the same cell, separate them with '/'."
+        "Extract class schedule entries from the provided image, which is an Excel screenshot. "
+        "Focus solely on individual class rows. "
+        "Disregard all header information, including semester titles (e.g., '5o Semestre', 'Fall 2024'), "
+        "column headers (e.g., 'Sala', 'Professor', 'Subject'), and any other non-class-related text. "
+        "For each detected class entry, provide the following four fields precisely: "
+        "1. `class_code`: Extract the unique course identifier (e.g., 'TES/II', 'MATH101', 'PHY-201'). This often contains a mix of letters, numbers, and symbols like '/-'. "
+        "2. `class_name`: Identify the subject or discipline name (e.g., 'Programação Orientada a Objetos', 'Calculus I', 'Thermodynamics'). This should be the name *without* the `class_code` if the code is prepended. "
+        "3. `professor`: Extract the full name of the professor or instructor. If the professor's name is not explicitly present, leave this field empty. "
+        "4. `classroom`: Determine the physical location where the class takes place (e.g., 'LAB 302', 'SALA 101', 'Room 205', 'Online'). If multiple classrooms are listed in a single cell, separate them using a single forward slash (e.g., 'LAB 302/SALA 101'). If the classroom is not specified, leave this field empty. "
+        "Ensure that each extracted field is clean and free of extraneous whitespace. "
+        "If a field is clearly absent or cannot be determined, it should be returned as an empty string."
     )
 
     try:
         await update.message.reply_text(t(update, context, "extracting_schedule"))
-        response, used_model = await generate_with_model_fallback(image_bytes, mime_type, prompt)
+        response, used_model = await generate_with_model_fallback(
+            image_bytes, mime_type, prompt
+        )
         structured_data = response.parsed
         if not structured_data or not structured_data.rows:
             await update.message.reply_text(t(update, context, "no_rows_parsed"))
@@ -253,7 +259,9 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logger.exception("A extração do Gemini falhou")
-        await update.message.reply_text(t(update, context, "extraction_error", error=str(e)))
+        await update.message.reply_text(
+            t(update, context, "extraction_error", error=str(e))
+        )
 
 
 async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -276,6 +284,3 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     conn.close()
     await query.answer(f"Marcado como {status}")
     await query.edit_message_text(f"Presença para {class_date}: {status}")
-
-
-

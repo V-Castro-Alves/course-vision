@@ -53,7 +53,6 @@
 - [ ] Confirmation message after `/upload` showing what was extracted (subject count, days covered)
 
 ### Docs & Community
-- [ ] Add `CONTRIBUTING.md` with contribution guidelines
 
 ---
 
@@ -66,7 +65,6 @@
 - [ ] **Visual Schedule Generation**: Use a library like Pillow to generate a clean, color-coded .png calendar of the week and send it back to the user after /upload.
 
 ### Technical Improvements
-- [ ] Replace SQLite with a proper DB (PostgreSQL) for multi-user scalability
 - [ ] Add CI/CD pipeline (GitHub Actions) for linting and tests
 - [ ] Implement retry logic with exponential backoff on API failures
 - [ ] Abstract the AI provider layer to make swapping models easier

@@ -1,0 +1,38 @@
+name: CI Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker BuildX
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: docker compose -f docker-compose.ci.yml build
+
+    - name: Run Ruff Check
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci ruff check .
+
+    - name: Run Ruff Format Check
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci ruff format . --check
+
+    - name: Run pip-audit
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci pip-audit
+
+    - name: Run Bandit
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci bandit -r . -x ./venv
+
+    - name: Run Pytest
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci pytest

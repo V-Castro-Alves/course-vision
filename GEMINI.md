@@ -19,12 +19,12 @@ The project uses a `.env` file to configure sensitive information and customizab
 -   `GEMINI_API_KEY`: **Required.** Your Google Gemini API key.
 -   `DATABASE_PATH`: **Optional.** Path to the SQLite database file (default: `database.db`).
 -   `GEMINI_MODEL`: **Optional.** Specifies a preferred Gemini model for extraction (e.g., `gemini-2.5-flash`). If not set, the system will attempt to use a list of available flash models.
--   `DEBUG`: **Optional.** Set to `TRUE` to enable debug mode, which will drop and recreate all database tables on every application startup. Useful for development and testing.
+
 
 ## Technical Details
 
 - **Database:** SQLite3.
-    -   Table `classes` now includes `day_index` (0-6, where 0 is Monday) and `class_date` (YYYY-MM-DD). The original `start_time` and `end_time` columns have been removed.
+    -   Table `classes` now includes `day_index` (0-6, where 0 is Monday) and `class_date` (YYYY-MM-DD).
     -   When a schedule image is uploaded, existing classes for the *current week* (Monday to Friday) are deleted, and new classes are added.
     -   Date assignment is deterministic: the first two extracted classes are assigned to Monday of the current week, the next two to Tuesday, and so on, up to Friday.
 - **Time Format:** Time extraction has been removed from Gemini's parsing.
@@ -41,3 +41,6 @@ The project uses a `.env` file to configure sensitive information and customizab
 
 - **Research:** If extraction fails, check the `prompt` in `main.py` and the `ClassRow` model.
 - **Testing:** Use `parsing.py` for standalone testing of the extraction logic without running the full Telegram bot.
+- **Testing Workflow:** When implementing new features, prioritize targeted local checks and rely on GitHub Actions for the full CI suite.
+
+- **Test-Driven Development (TDD):** For any new feature or significant change, write tests *before* writing the implementation code.

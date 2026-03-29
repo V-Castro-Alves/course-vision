@@ -1,6 +1,12 @@
-from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, MessageHandler, filters
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    CommandHandler,
+    MessageHandler,
+    filters,
+)
 
-from .config import TELEGRAM_TOKEN
+from .config import TELEGRAM_TOKEN, logger
 from .database import init_db
 from .i18n import load_responses
 from .handlers import (
@@ -25,10 +31,12 @@ def main():
     app.add_handler(CommandHandler("upload", upload_command))
     app.add_handler(CommandHandler("schedule", schedule_text))
     app.add_handler(CommandHandler("today", today_classes))
-    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, photo_upload))
+    app.add_handler(
+        MessageHandler(filters.PHOTO | filters.Document.IMAGE, photo_upload)
+    )
     app.add_handler(CallbackQueryHandler(attendance_callback))
 
-    print("Bot iniciado.")
+    logger.info("Bot iniciado.")
     app.run_polling()
 
 
