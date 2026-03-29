@@ -23,10 +23,10 @@ jobs:
       run: docker compose -f docker-compose.ci.yml build
 
     - name: Run Ruff Check
-      run: docker compose -f docker-compose.ci.yml run --rm app-ci ruff check .
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci "python -m ruff check ."
 
     - name: Run Ruff Format Check
-      run: docker compose -f docker-compose.ci.yml run --rm app-ci ruff format . --check
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci "python -m ruff format . --check"
 
     - name: Run pip-audit
       run: docker compose -f docker-compose.ci.yml run --rm app-ci pip-audit
@@ -35,4 +35,4 @@ jobs:
       run: docker compose -f docker-compose.ci.yml run --rm app-ci bandit -r . -x ./venv
 
     - name: Run Pytest
-      run: docker compose -f docker-compose.ci.yml run --rm app-ci pytest
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci "PYTHONPATH=. pytest"
