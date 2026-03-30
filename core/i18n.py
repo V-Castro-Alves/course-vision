@@ -23,8 +23,14 @@ def load_responses(path: str = RESPONSES_PATH):
         raise RuntimeError(f"Error loading translations from {path}: {exc}")
 
 
-def t(update: Update, context: ContextTypes.DEFAULT_TYPE, key: str, **kwargs) -> str:
-    lang = get_user_lang(update, context)
+def t(
+    key: str,
+    update: Update = None,
+    context: ContextTypes.DEFAULT_TYPE = None,
+    user_id: int = None,
+    **kwargs,
+) -> str:
+    lang = get_user_lang(update, context, user_id)
     if lang not in RESPONSES:
         lang = "en"
 

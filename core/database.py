@@ -46,10 +46,36 @@ def init_db():
     conn.close()
 
 
-def get_user_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    user_id = update.effective_user.id
-    if context.user_data.get("lang"):
+def get_user_lang(
+    update: Update = None,
+    context: ContextTypes.DEFAULT_TYPE = None,
+    user_id: int = None,
+) -> str:
+    # First, try to get user_id if not provided
+    if user_id is None:
+        if update and update.effective_user:
+            user_id = update.effective_user.id
+        elif (
+            not context and not update
+        ):  # If no update and no context, we have no user info
+            return "en"  # Default to English early
+
+    # Try to get language from context.user_data first (if context is available)
+    if (
+        context
+        and hasattr(context, "user_data")
+        and isinstance(context.user_data, dict)
+        and context.user_data.get("lang")
+    ):
         return context.user_data["lang"]
+
+    # If user_id is still None at this point, it means neither update.effective_user nor
+    # an explicit user_id was provided, and context.user_data didn't have a lang.
+    # In this specific scenario, we must return a default as we can't query the DB.
+    if (
+        user_id is None
+    ):  # This could happen if only context was available but no user_data.lang
+        return "en"
 
     conn = db_connect()
     cur = conn.cursor()
@@ -61,8 +87,12 @@ def get_user_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         lang = "en"
     else:
         lang = user_row["lang"]
-    conn.close()
-    context.user_data["lang"] = lang
+    if (
+        context
+        and hasattr(context, "user_data")
+        and isinstance(context.user_data, dict)
+    ):  # Only set in user_data if context is available and user_data is a dict
+        context.user_data["lang"] = lang
     return lang
 
 
@@ -81,12 +111,14 @@ def check_auth(func):
             if update.message:
                 from .i18n import t
 
-                await update.message.reply_text(t(update, context, "auth_denied"))
+                await update.message.reply_text(
+                    t("auth_denied", update=update, context=context)
+                )
             elif update.callback_query:
                 from .i18n import t
 
                 await update.callback_query.answer(
-                    t(update, context, "auth_denied"), show_alert=True
+                    t("auth_denied", update=update, context=context), show_alert=True
                 )
             return
         return await func(update, context)
@@ -101,10 +133,12 @@ def check_owner(func):
             from .i18n import t
 
             if update.message:
-                await update.message.reply_text(t(update, context, "auth_denied"))
+                await update.message.reply_text(
+                    t("auth_denied", update=update, context=context)
+                )
             elif update.callback_query:
                 await update.callback_query.answer(
-                    t(update, context, "auth_denied"), show_alert=True
+                    t("auth_denied", update=update, context=context), show_alert=True
                 )
             return
         return await func(update, context)

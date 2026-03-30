@@ -16,6 +16,7 @@ from .handlers import (
     schedule_text,
     today_classes,
     photo_upload,
+    confirm_schedule_processing,  # Added
     attendance_callback,
 )
 
@@ -34,6 +35,9 @@ def main():
     app.add_handler(
         MessageHandler(filters.PHOTO | filters.Document.IMAGE, photo_upload)
     )
+    app.add_handler(
+        CallbackQueryHandler(confirm_schedule_processing, pattern="^process_schedule:")
+    )  # Added
     app.add_handler(CallbackQueryHandler(attendance_callback))
 
     logger.info("Bot iniciado.")

@@ -2,6 +2,10 @@
 
 This project uses the `google-genai` SDK and Structured Outputs to parse class schedules from images.
 
+## Security Mandates
+
+- **Environment Variables:** NEVER read the content of the `.env` file or directly access environment variables. Assume they are properly configured in the execution environment.
+
 ## Core Mandates
 
 - **SDK:** Always use the `google-genai` SDK (`from google import genai`).
@@ -42,5 +46,6 @@ The project uses a `.env` file to configure sensitive information and customizab
 - **Research:** If extraction fails, check the `prompt` in `main.py` and the `ClassRow` model.
 - **Testing:** Use `parsing.py` for standalone testing of the extraction logic without running the full Telegram bot.
 - **Testing Workflow:** When implementing new features, prioritize targeted local checks and rely on GitHub Actions for the full CI suite.
-
 - **Test-Driven Development (TDD):** For any new feature or significant change, write tests *before* writing the implementation code.
+- **Comprehensive Testing:** Always write tests for new features, bug fixes, and significant changes to ensure correctness and prevent regressions.
+- **ROADMAP.md Update:** After every successful implementation, check `ROADMAP.md` and move completed tasks to the 'DONE' section.

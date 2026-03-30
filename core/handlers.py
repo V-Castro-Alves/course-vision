@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import tempfile
 
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from .config import WEEKDAYS_PTBR_SHORT, logger
@@ -22,17 +22,21 @@ from .parsing import (
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(t(update, context, "welcome"))
+    await update.message.reply_text(t("welcome", update=update, context=context))
 
 
 @check_auth
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = context.args
     if not parts:
-        return await update.message.reply_text(t(update, context, "setlang_usage"))
+        return await update.message.reply_text(
+            t("setlang_usage", update=update, context=context)
+        )
     choice = parts[0].lower()
     if choice not in ("pt-br", "en"):
-        return await update.message.reply_text(t(update, context, "setlang_usage"))
+        return await update.message.reply_text(
+            t("setlang_usage", update=update, context=context)
+        )
 
     user_id = update.effective_user.id
     conn = db_connect()
@@ -42,7 +46,7 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
     context.user_data["lang"] = choice
     await update.message.reply_text(
-        t(update, context, "setlang_success", language=choice)
+        t("setlang_success", update=update, context=context, language=choice)
     )
 
 
@@ -62,16 +66,21 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     items = cur.fetchall()
     if not items:
         await update.message.reply_text(
-            t(update, context, "no_schedule", monday=monday_of_week.strftime("%d/%m"))
+            t(
+                "no_schedule",
+                update=update,
+                context=context,
+                monday=monday_of_week.strftime("%d/%m"),
+            )
         )
         conn.close()
         return
 
     text = [
         t(
-            update,
-            context,
             "schedule_header",
+            update=update,
+            context=context,
             monday=monday_of_week.strftime("%d/%m"),
             friday=friday_of_week.strftime("%d/%m"),
         )
@@ -109,12 +118,19 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     items = cur.fetchall()
     if not items:
         await update.message.reply_text(
-            t(update, context, "no_today_classes", today=today.strftime("%d/%m"))
+            t(
+                "no_today_classes",
+                update=update,
+                context=context,
+                today=today.strftime("%d/%m"),
+            )
         )
         conn.close()
         return
 
-    text = [t(update, context, "today_header", today=today.strftime("%d/%m"))]
+    text = [
+        t("today_header", update=update, context=context, today=today.strftime("%d/%m"))
+    ]
     text.append(f"\n{WEEKDAYS_PTBR_SHORT[today.weekday()]} ({today.strftime('%d/%m')})")
 
     for r in items:
@@ -129,37 +145,69 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @check_owner
 async def upload_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["awaiting_photo"] = True
-    await update.message.reply_text(t(update, context, "upload_prompt"))
+    await update.message.reply_text(t("upload_prompt", update=update, context=context))
 
 
 @check_owner
 async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.user_data.get("awaiting_photo"):
-        await update.message.reply_text(t(update, context, "execute_upload_first"))
-        return
-
-    context.user_data["awaiting_photo"] = False
-
     if update.message.photo:
         photo = update.message.photo[-1]
-        file = await photo.get_file()
-        ext = ".jpg"
+        file_id = photo.file_id
+        # Store photo file_id and original message_id for later use
+        context.user_data["last_photo_file_id"] = file_id
+        context.user_data["last_photo_message_id"] = update.message.message_id
     elif update.message.document and update.message.document.mime_type.startswith(
         "image/"
     ):
-        file = await update.message.document.get_file()
-        ext = os.path.splitext(update.message.document.file_name)[1] or ".png"
+        document = update.message.document
+        file_id = document.file_id
+        context.user_data["last_photo_file_id"] = file_id
+        context.user_data["last_photo_message_id"] = update.message.message_id
     else:
-        await update.message.reply_text(t(update, context, "send_image_only"))
+        await update.message.reply_text(
+            t("send_image_only", update=update, context=context)
+        )
         return
 
-    # Use NamedTemporaryFile for secure temporary file handling
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                t("yes_process", update=update, context=context),
+                callback_data="process_schedule:yes",
+            ),
+            InlineKeyboardButton(
+                t("no_process", update=update, context=context),
+                callback_data="process_schedule:no",
+            ),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        t("photo_received_ask_process", update=update, context=context),
+        reply_markup=reply_markup,
+    )
+
+    # Exit here, actual processing will happen in confirm_schedule_processing
+    return
+
+
+async def _process_and_save_schedule(
+    chat_id: int,
+    user_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    file_id: str,
+    ext: str,
+):
+    file = await context.bot.get_file(file_id)
+
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as temp_file:
         path = temp_file.name
     await file.download_to_drive(path)
 
-    await update.message.reply_text(t(update, context, "image_received"))
+    await context.bot.send_message(
+        chat_id=chat_id, text=t("image_received", user_id=user_id, context=context)
+    )
 
     with open(path, "rb") as f:
         image_bytes = f.read()
@@ -196,17 +244,29 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        await update.message.reply_text(t(update, context, "extracting_schedule"))
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=t("extracting_schedule", user_id=user_id, context=context),
+        )
         response, used_model = await generate_with_model_fallback(
             image_bytes, mime_type, prompt
         )
         structured_data = response.parsed
         if not structured_data or not structured_data.rows:
-            await update.message.reply_text(t(update, context, "no_rows_parsed"))
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=t("no_rows_parsed", user_id=user_id, context=context),
+            )
             return
 
-        await update.message.reply_text(
-            t(update, context, "parsed_rows", count=len(structured_data.rows))
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=t(
+                "parsed_rows",
+                user_id=user_id,
+                context=context,
+                count=len(structured_data.rows),
+            ),
         )
 
         conn = db_connect()
@@ -253,14 +313,55 @@ async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.commit()
         conn.close()
 
-        await update.message.reply_text(
-            t(update, context, "parsing_success", count=inserted, model=used_model)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=t(
+                "parsing_success",
+                user_id=user_id,
+                context=context,
+                count=inserted,
+                model=used_model,
+            ),
         )
 
     except Exception as e:
         logger.exception("A extração do Gemini falhou")
-        await update.message.reply_text(
-            t(update, context, "extraction_error", error=str(e))
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=t("extraction_error", user_id=user_id, context=context, error=str(e)),
+        )
+
+
+async def confirm_schedule_processing(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    await query.answer()
+
+    choice = query.data.split(":")[1]
+    file_id = context.user_data.pop("last_photo_file_id", None)
+    # message_id = context.user_data.pop("last_photo_message_id", None) # message_id is not needed here
+    ext = ".jpg"  # Assuming .jpg for now, need a way to store original ext if necessary
+    user_id = query.from_user.id  # Get user_id from the query
+
+    if not file_id:
+        await query.edit_message_text(
+            t("photo_data_missing", update=update, context=context)
+        )
+        return
+
+    if choice == "yes":
+        await query.edit_message_text(
+            t("processing_confirmed", update=update, context=context),
+        )
+        chat_id = update.effective_chat.id
+        await _process_and_save_schedule(
+            chat_id, user_id, context, file_id, ext
+        )  # Pass user_id
+
+    else:
+        await query.edit_message_text(
+            t("processing_cancelled", update=update, context=context)
         )
 
 
@@ -268,7 +369,9 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     user_id = query.from_user.id
     if not auth_user(user_id):
-        await query.answer(t(update, context, "auth_denied"), show_alert=True)
+        await query.answer(
+            t("auth_denied", update=update, context=context), show_alert=True
+        )
         return
     if not query.data.startswith("attendance:"):
         await query.answer("Callback inválido")

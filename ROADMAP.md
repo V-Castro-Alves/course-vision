@@ -15,16 +15,22 @@
 - [x] Granular access control via Telegram User ID allowlist
 - [x] `/today` and `/schedule` commands for quick week overview
 - [x] `/upload` flow for image-based schedule ingestion
+- [x] **Change /upload command behavior**: Make so that the user can send a photo without needing to type `/upload` first. The bot will automatically detect that a photo has been sent and will ask if it should be processed.
 
 ### Technical Improvements
 - [x] Structured outputs with Pydantic schema validation
 - [x] SQLite persistence layer
 - [x] Automatic model fallback when primary API quota is hit
 - [x] Full Docker & Docker Compose containerization
+- [x] Improve OCR prompt engineering for edge-case schedule formats
+- [x] Add structured logging (replace raw `print` statements)
+- [x] Write unit tests for the scheduling/mapping logic
+- [x] Add CI/CD pipeline (GitHub Actions) for linting and tests
 
 ### UX / Bot Experience
 - [x] `/start` initialization command
 - [x] Single-image upload flow via Telegram attachment
+- [x] Improved bot responses with human-readable text and emoticons ✨
 
 ### Docs & Community
 - [X] **Visual Architecture Diagram**: Use a Mermaid.js diagram in README
@@ -39,13 +45,9 @@
 > Actively being worked on or planned for the immediate next cycle.
 
 ### New Features
-- [ ] **Change /upload command behavior**: Make so that the user can send a photo without needing to type `/upload` first. The bot will automatically detect that a photo has been sent and will ask if it should be processed.
 - [ ] `/remind` command — set a Telegram reminder X minutes before a class
 
 ### Technical Improvements
-- [ ] Improve OCR prompt engineering for edge-case schedule formats
-- [ ] Add structured logging (replace raw `print` statements)
-- [ ] Write unit tests for the scheduling/mapping logic
 - [ ] Add a `.env.example` with all required variables documented
 
 ### UX / Bot Experience
@@ -65,7 +67,6 @@
 - [ ] **Visual Schedule Generation**: Use a library like Pillow to generate a clean, color-coded .png calendar of the week and send it back to the user after /upload.
 
 ### Technical Improvements
-- [ ] Add CI/CD pipeline (GitHub Actions) for linting and tests
 - [ ] Implement retry logic with exponential backoff on API failures
 - [ ] Abstract the AI provider layer to make swapping models easier
 - [ ] **Input Validation**: In handlers.py, when a user sends a photo, add a check for file size. Large 4K images might hit Telegram's download limits or Gemini's token limits unnecessarily

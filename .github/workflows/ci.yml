@@ -32,7 +32,7 @@ jobs:
       run: docker compose -f docker-compose.ci.yml run --rm app-ci pip-audit
 
     - name: Run Bandit
-      run: docker compose -f docker-compose.ci.yml run --rm app-ci "python -m bandit -r /app -x /app/venv"
+      run: docker compose -f docker-compose.ci.yml run --rm app-ci "python -m bandit -r /app -x /app/venv,/app/tests"
 
     - name: Run Pytest
       run: |

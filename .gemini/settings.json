@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "CourseVision CI Tools": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "fastmcp",
+        "fastmcp",
+        "run",
+        "/home/vitor/projects/course_vision/mcp_tests.py"
+      ]
+    }
+  }
+}
