@@ -50,9 +50,7 @@ The project uses a `.env` file to configure sensitive information and customizab
 ## Development Lifecycle
 
 - **Research:** If extraction fails, check the `prompt` in `core/handlers.py` and the `ClassRow` model in `core/parsing.py`.
-- **Testing:** Use `core/parsing.py` for standalone testing of the extraction logic.
 - **Testing Workflow:** ALWAYS run tests using the Docker Compose setup defined in `docker-compose.ci.yml`, as in the CI. Local checks should match the CI environment.
-  - Run tests with: `docker compose -f docker-compose.ci.yml run --rm app-ci "PYTHONPATH=. pytest"`
   - Ensure all CI checks (Ruff, pip-audit, Bandit) pass before finalizing changes.
 - **Test-Driven Development (TDD):** Write tests *before* implementation for any new feature.
 - **ROADMAP.md Update:** Move completed tasks to the 'DONE' section after successful implementation.
