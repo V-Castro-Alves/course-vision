@@ -1,0 +1,39 @@
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="quadrantMask">
+      <rect x="0" y="0" width="300" height="300" fill="white" />
+    </mask>
+
+    <g id="logo-grid">
+      <rect fill="#4A90E2" rx="15" x="0" y="0" width="80" height="80" />
+      <rect fill="#4A90E2" rx="15" x="90" y="0" width="80" height="80" />
+      <rect fill="#4A90E2" rx="15" x="180" y="0" width="80" height="80" />
+      <rect fill="#4A90E2" rx="15" x="0" y="90" width="80" height="80" />
+      <rect fill="#4A90E2" rx="15" x="90" y="90" width="80" height="80" />
+      <rect fill="#4A90E2" rx="15" x="180" y="90" width="80" height="80" />
+      <rect fill="#4A90E2" rx="15" x="0" y="180" width="80" height="80" />
+      <rect fill="#4A90E2" rx="15" x="90" y="180" width="80" height="80" />
+      <rect fill="#2ECC71" rx="15" x="180" y="180" width="80" height="80" />
+    </g>
+  </defs>
+
+  <style>
+    .pivot-group {
+      transform-origin: 300px 300px;
+      /* Using ease-in-out for a smoother stop/start transition */
+      animation: sweep-and-pause 6s infinite ease-in-out;
+    }
+
+    @keyframes sweep-and-pause {
+      0%   { transform: rotate(0deg); }   /* Start visible */
+      25%  { transform: rotate(0deg); }   /* Pause for 1 second (25% of 6s) */
+      100% { transform: rotate(360deg); } /* Complete the full circle */
+    }
+  </style>
+
+  <g mask="url(#quadrantMask)">
+    <g class="pivot-group">
+      <use href="#logo-grid" x="40" y="40" />
+    </g>
+  </g>
+</svg>
