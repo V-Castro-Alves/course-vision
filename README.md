@@ -21,6 +21,7 @@
 *   **🔄 Auto-Sync:** Uploading a new schedule automatically wipes the old one for that week—no manual cleanup required.
 *   **🔒 Granular Privacy:** Restrict access to specific Telegram User IDs.
 *   **🤖 Model Resilience:** Automatic fallback logic ensures the bot stays online even if primary API quotas are hit.
+*   **🌐 Multi-language:** Supports both English and Portuguese.
 
 ---
 
@@ -71,7 +72,7 @@ style CV fill:#008000,stroke:#333,stroke-width:4px
 ### 2. Setup
 ```bash
 # Clone the repository
-git clone [https://github.com/youruser/CourseVision.git](https://github.com/youruser/CourseVision.git)
+git clone https://github.com/V-Castro-Alves/course-vision.git
 cd CourseVision
 
 # Create environment file
@@ -94,10 +95,11 @@ python main.py
 
 ## 📌 Usage Flow
 
-1.  **/start** to initialize.
-2.  **/upload** to prep the AI.
-3.  **Attach Image** — Send the schedule photo.
-4.  **/today** or **/schedule** to see your week at a glance.
+1.  **/start** or **/help** to initialize and see available commands.
+2.  **/setlang pt-br|en** to choose your preferred language.
+3.  **/upload** to learn how to upload your schedule.
+4.  **Attach Image** — Send the schedule photo directly! The bot will automatically detect it and ask if you want to process it.
+5.  **/today** or **/schedule** to see your week at a glance.
 
 ---
 
@@ -118,6 +120,7 @@ python main.py
 *   **🔄 Sincronização Automática:** Fazer upload de um novo horário apaga automaticamente o antigo para aquela semana — nenhuma limpeza manual é necessária.
 *   **🔒 Privacidade Granular:** Restringe o acesso a IDs de Usuários específicos do Telegram.
 *   **🤖 Resiliência do Modelo:** A lógica de fallback automático garante que o bot permaneça online mesmo se as cotas da API principal forem atingidas.
+*   **🌐 Multi-idioma:** Suporta Inglês e Português.
 
 ---
 
@@ -129,34 +132,6 @@ CourseVision atua como o backend inteligente para processamento e gerenciamento 
 -   **Camada de Dados:** `SQLite` + `Pydantic` para validação rigorosa de esquema
 -   **DevOps:** Totalmente conteinerizado com `Docker` e `Docker Compose`
 
-### CI/CD e Portões de Qualidade
-Para garantir a qualidade do código e a estabilidade do projeto, o CourseVision emprega um pipeline robusto de CI/CD e portões de qualidade locais:
-
-*   **Ferramentas:** Ruff (linting/formatação), pip-audit (segurança de dependências), Bandit (segurança de análise estática), Pytest (teste de unidade).
-*   **Integração Docker:** Todas as verificações de CI são executadas dentro de contêineres Docker, garantindo um ambiente consistente e isolado.
-*   **GitHub Actions:** O fluxo de trabalho automatizado (`.github/workflows/ci.yml`) executa todas as verificações em `push` e `pull_request` para `main`.
-*   **Verificações Locais:** Comandos `docker compose` são fornecidos para execução local dessas verificações sem a necessidade de instalações locais de Python.
-
-## Orchestration
-CourseVision acts as the central orchestrator, managing the lifecycle of your schedule from image capture to database persistence.
-```mermaid
-graph TD
-    User((📱 Telegram User)) <-->|Commands / Image| Bot[✈️ ClassClerkBot Interface]
-
-    subgraph "Core System"
-        Bot <-->|API Calls| CV[👁️ CourseVision Orchestrator]
-
-        CV -->|1. Image + Prompt| Gemini[🤖 Gemini 2.0 Flash]
-        Gemini -->|2. Structured JSON| CV
-
-        CV -->|3. Mapping & Validation| Map[📅 Deterministic Logic]
-        Map --> CV
-
-        CV <-->|4. Read/Write| DB[(🗄️ SQLite Database)]
-    end
-
-style CV fill:#008000,stroke:#333,stroke-width:4px
-```
 ---
 
 ## 🚀 Início Rápido
@@ -168,7 +143,7 @@ style CV fill:#008000,stroke:#333,stroke-width:4px
 ### 2. Configuração
 ```bash
 # Clone o repositório
-git clone [https://github.com/youruser/CourseVision.git](https://github.com/youruser/CourseVision.git)
+git clone https://github.com/V-Castro-Alves/course-vision.git
 cd CourseVision
 
 # Crie o arquivo de ambiente
@@ -191,14 +166,8 @@ python main.py
 
 ## 📌 Fluxo de Uso
 
-1.  **/start** para inicializar.
-2.  **/upload** para preparar a IA.
-3.  **Anexar Imagem** — Envie a foto do horário.
-4.  **/today** ou **/schedule** para ver sua semana rapidamente.
-
----
-
-## 5. Dicas Finais de Polimento
-
-*   **Licença:** Este projeto é licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
-*   **Aviso de Lógica Determinística:** Observe que várias decisões de design e projeto, foram feitas com base na estrutura específica necessitada pelo autor. Para a sua utilização pessoal, é recomendado adaptar a lógica para que se encaixe melhor com o formato da sua necessidade.
+1.  **/start** ou **/help** para inicializar e ver os comandos disponíveis.
+2.  **/setlang pt-br|en** para escolher seu idioma preferido.
+3.  **/upload** para aprender como enviar seu horário.
+4.  **Anexar Imagem** — Envie a foto do horário diretamente! O bot irá detectá-la automaticamente e perguntará se deseja processar.
+5.  **/today** ou **/schedule** para ver sua semana rapidamente.
