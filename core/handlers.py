@@ -95,7 +95,7 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         text.append(
-            f"• {r['code']} - {r['subject']}"
+            f"• *{r['start_time']} - {r['end_time']}* | {r['code']} - {r['subject']}"
             f"\n└ 👤 Prof. {r['professor']} | 📍 {r['room']}"
         )
 
@@ -135,7 +135,7 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for r in items:
         text.append(
-            f"• {r['code']} - {r['subject']}"
+            f"• *{r['start_time']} - {r['end_time']}* | {r['code']} - {r['subject']}"
             f"\n└ 👤 Prof. {r['professor']} | 📍 {r['room']}"
         )
 
@@ -296,10 +296,12 @@ async def _process_and_save_schedule(
 
         for class_item in assigned_classes:
             cur.execute(
-                "INSERT INTO classes (day_index, class_date, code, subject, professor, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO classes (day_index, class_date, start_time, end_time, code, subject, professor, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     class_item.day_index,
                     class_item.class_date,
+                    class_item.start_time,
+                    class_item.end_time,
                     class_item.class_code,
                     class_item.class_name,
                     class_item.professor,

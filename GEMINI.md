@@ -31,11 +31,11 @@ The project uses a `.env` file to configure sensitive information and customizab
 ## Technical Details
 
 - **Database:** SQLite3.
-    -   Table `classes` includes `day_index` (0-6, where 0 is Monday) and `class_date` (YYYY-MM-DD).
+    -   Table `classes` includes `day_index` (0-6, where 0 is Monday), `class_date` (YYYY-MM-DD), `start_time`, and `end_time`.
     -   Table `attendance` tracks class presence (`attended`, `skipped`).
     -   When a schedule image is uploaded, existing classes for the *current week* (Monday to Friday) are deleted, and new classes are added.
-    -   Date assignment is deterministic: classes are assigned sequentially from Monday to Friday (default 2 per day logic).
-- **Time Format:** Time extraction is currently NOT performed by Gemini; it relies on deterministic day/date mapping.
+    -   Date assignment is deterministic: classes are assigned sequentially from Monday to Friday (2 per day logic).
+- **Time Format:** Time extraction is NOT performed by Gemini; it is assigned deterministically (1st class: 19:00-20:30, 2nd class: 20:50-22:30).
 - **I18n:** Multi-language support (English and Portuguese) is managed via `core/responses.json` and the `t()` function.
 
 ## Bot Commands
@@ -51,6 +51,8 @@ The project uses a `.env` file to configure sensitive information and customizab
 
 - **Research:** If extraction fails, check the `prompt` in `core/handlers.py` and the `ClassRow` model in `core/parsing.py`.
 - **Testing:** Use `core/parsing.py` for standalone testing of the extraction logic.
-- **Testing Workflow:** Rely on GitHub Actions for the full CI suite. Local checks can be run via Docker Compose.
+- **Testing Workflow:** ALWAYS run tests using the Docker Compose setup defined in `docker-compose.ci.yml`, as in the CI. Local checks should match the CI environment.
+  - Run tests with: `docker compose -f docker-compose.ci.yml run --rm app-ci "PYTHONPATH=. pytest"`
+  - Ensure all CI checks (Ruff, pip-audit, Bandit) pass before finalizing changes.
 - **Test-Driven Development (TDD):** Write tests *before* implementation for any new feature.
 - **ROADMAP.md Update:** Move completed tasks to the 'DONE' section after successful implementation.

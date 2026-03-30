@@ -10,7 +10,7 @@ from .config import AUTHORIZED_USER_ID, ALLOWED_TELEGRAM_IDS, DATABASE_PATH
 SQL_SCHEMA = [
     "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER UNIQUE NOT NULL, lang TEXT DEFAULT 'en')",
     "CREATE TABLE IF NOT EXISTS raw_images (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, mime_type TEXT, image_blob BLOB, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-    "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, class_date TEXT NOT NULL, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
+    "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, class_date TEXT NOT NULL, start_time TEXT, end_time TEXT, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
     "CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL, class_date TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('attended','skipped')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
 ]
 
@@ -42,6 +42,15 @@ def init_db():
     cur = conn.cursor()
     for stmt in SQL_SCHEMA:
         cur.execute(stmt)
+
+    # Migration: add start_time and end_time if they don't exist
+    cur.execute("PRAGMA table_info(classes)")
+    columns = [column[1] for column in cur.fetchall()]
+    if "start_time" not in columns:
+        cur.execute("ALTER TABLE classes ADD COLUMN start_time TEXT")
+    if "end_time" not in columns:
+        cur.execute("ALTER TABLE classes ADD COLUMN end_time TEXT")
+
     conn.commit()
     conn.close()
 

@@ -11,6 +11,7 @@
 ### New Features
 - [x] OCR-based schedule extraction via Gemini 2.0 Flash
 - [x] Deterministic weekly mapping (Monday–Friday, 2 classes/day logic)
+- [x] Deterministic time assignment (19:00-20:30 and 20:50-22:30)
 - [x] Auto-sync: uploading a new schedule replaces the old week's data automatically
 - [x] Granular access control via Telegram User ID allowlist
 - [x] `/today` and `/schedule` commands for quick week overview
@@ -26,6 +27,7 @@
 - [x] Add structured logging (replace raw `print` statements)
 - [x] Write unit tests for the scheduling/mapping logic
 - [x] Add CI/CD pipeline (GitHub Actions) for linting and tests
+- [x] Migrate to Docker-based local testing (matching CI)
 
 ### UX / Bot Experience
 - [x] `/start` initialization command

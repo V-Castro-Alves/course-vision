@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class ClassRow(BaseModel):
     day_index: int = -1
     class_date: str = ""
+    start_time: str = ""
+    end_time: str = ""
     class_code: str = ""
     class_name: str = ""
     professor: str = ""
@@ -157,10 +159,17 @@ def assign_dates_to_classes(rows: List[ClassRow]) -> List[ClassRow]:
         current_day_name = WEEKDAYS[current_day_offset]
         assigned_count = class_assignments_per_day.get(current_day_name, 0)
 
-        row.day_index = monday_of_week.weekday() + current_day_offset
+        row.day_index = (monday_of_week.weekday() + current_day_offset) % 7
         row.class_date = (
             monday_of_week + timedelta(days=current_day_offset)
         ).isoformat()
+
+        if assigned_count == 0:
+            row.start_time = "19:00"
+            row.end_time = "20:30"
+        elif assigned_count == 1:
+            row.start_time = "20:50"
+            row.end_time = "22:30"
 
         assigned_rows.append(row)
         class_assignments_per_day[current_day_name] = assigned_count + 1

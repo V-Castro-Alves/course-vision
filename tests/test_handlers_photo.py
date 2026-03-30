@@ -75,7 +75,7 @@ def mock_db_connection():
     )
     cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, class_date TEXT NOT NULL, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))
+        CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, class_date TEXT NOT NULL, start_time TEXT, end_time TEXT, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))
     """
     )
     cursor.execute(
@@ -192,6 +192,8 @@ async def test_confirm_schedule_processing_yes(
         MagicMock(
             day_index=0,
             class_date=(datetime.now().date() + timedelta(days=0)).isoformat(),
+            start_time="19:00",
+            end_time="20:30",
             class_code="MATH101",
             class_name="Calculus I",
             professor="Dr. Smith",
@@ -200,13 +202,14 @@ async def test_confirm_schedule_processing_yes(
         MagicMock(
             day_index=1,
             class_date=(datetime.now().date() + timedelta(days=1)).isoformat(),
+            start_time="20:50",
+            end_time="22:30",
             class_code="PHYS202",
             class_name="Physics II",
             professor="Dr. Jones",
             classroom="Lab 202",
         ),
     ]
-
     # Execute confirmation handler
     await confirm_schedule_processing(mock_update, mock_context)
 

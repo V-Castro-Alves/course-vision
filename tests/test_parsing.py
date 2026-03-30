@@ -217,20 +217,32 @@ class TestParsingFunctions(unittest.TestCase):
             # Monday
             self.assertEqual(assigned_rows[0].class_date, "2026-03-23")
             self.assertEqual(assigned_rows[0].day_index, 0)
+            self.assertEqual(assigned_rows[0].start_time, "19:00")
+            self.assertEqual(assigned_rows[0].end_time, "20:30")
             self.assertEqual(assigned_rows[1].class_date, "2026-03-23")
             self.assertEqual(assigned_rows[1].day_index, 0)
+            self.assertEqual(assigned_rows[1].start_time, "20:50")
+            self.assertEqual(assigned_rows[1].end_time, "22:30")
 
             # Tuesday
             self.assertEqual(assigned_rows[2].class_date, "2026-03-24")
             self.assertEqual(assigned_rows[2].day_index, 1)
+            self.assertEqual(assigned_rows[2].start_time, "19:00")
+            self.assertEqual(assigned_rows[2].end_time, "20:30")
             self.assertEqual(assigned_rows[3].class_date, "2026-03-24")
             self.assertEqual(assigned_rows[3].day_index, 1)
+            self.assertEqual(assigned_rows[3].start_time, "20:50")
+            self.assertEqual(assigned_rows[3].end_time, "22:30")
 
             # Wednesday
             self.assertEqual(assigned_rows[4].class_date, "2026-03-25")
             self.assertEqual(assigned_rows[4].day_index, 2)
+            self.assertEqual(assigned_rows[4].start_time, "19:00")
+            self.assertEqual(assigned_rows[4].end_time, "20:30")
             self.assertEqual(assigned_rows[5].class_date, "2026-03-25")
             self.assertEqual(assigned_rows[5].day_index, 2)
+            self.assertEqual(assigned_rows[5].start_time, "20:50")
+            self.assertEqual(assigned_rows[5].end_time, "22:30")
 
             self.assertEqual(len(assigned_rows), 6)
 
