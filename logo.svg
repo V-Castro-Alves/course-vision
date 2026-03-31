@@ -13,7 +13,7 @@
       <rect fill="#4A90E2" rx="15" x="180" y="90" width="80" height="80" />
       <rect fill="#4A90E2" rx="15" x="0" y="180" width="80" height="80" />
       <rect fill="#4A90E2" rx="15" x="90" y="180" width="80" height="80" />
-      <rect fill="#2ECC71" rx="15" x="180" y="180" width="80" height="80" />
+      <rect class="green-square" fill="#2ECC71" rx="15" x="180" y="180" width="80" height="80" />
     </g>
   </defs>
 
@@ -24,10 +24,22 @@
       animation: sweep-and-pause 6s infinite ease-in-out;
     }
 
+    .green-square {
+      animation: green-blink 6s infinite linear;
+      animation-fill-mode: forwards;
+      fill: #2ECC71;
+    }
+
     @keyframes sweep-and-pause {
       0%   { transform: rotate(0deg); }   /* Start visible */
       25%  { transform: rotate(0deg); }   /* Pause for 1 second (25% of 6s) */
       100% { transform: rotate(360deg); } /* Complete the full circle */
+    }
+
+    @keyframes green-blink {
+      0%, 18%, 25%, 100% { opacity: 1; fill: #2ECC71; }
+      18% { opacity: 1; fill: #77ff77; }
+      22% { opacity: 1; fill: #77ff77; }
     }
   </style>
 
