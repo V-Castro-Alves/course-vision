@@ -236,24 +236,28 @@ async def test_confirm_schedule_processing_yes(
         ),
     )
     mock_generate_with_model_fallback.assert_called_once()
-    mock_context.bot.send_message.assert_any_call(
-        chat_id=mock_update.effective_chat.id,
-        text=t(
-            "parsed_rows",
-            user_id=mock_update.effective_user.id,
-            context=mock_context,
-            count=2,
-        ),
+    # Verify final success message with coverage details
+    unique_days = sorted(
+        list(set(c.class_date for c in mock_assign_dates_to_classes.return_value))
     )
-    mock_context.bot.send_message.assert_any_call(
-        chat_id=mock_update.effective_chat.id,
-        text=t(
+    days_str = ", ".join(
+        [datetime.fromisoformat(d).strftime("%d/%m") for d in unique_days]
+    )
+    expected_success_text = (
+        t(
             "parsing_success",
             user_id=mock_update.effective_user.id,
             context=mock_context,
             count=2,
             model="gemini-flash",
-        ),
+        )
+        + f"\n\n📅 *{len(unique_days)}* dias cobertos: {days_str}"
+    )
+
+    mock_context.bot.send_message.assert_any_call(
+        chat_id=mock_update.effective_chat.id,
+        text=expected_success_text,
+        parse_mode="Markdown",
     )
 
     # Verify database interactions

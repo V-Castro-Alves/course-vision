@@ -28,26 +28,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @check_auth
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    parts = context.args
-    if not parts:
-        return await update.message.reply_text(
-            t("setlang_usage", update=update, context=context)
-        )
-    choice = parts[0].lower()
-    if choice not in ("pt-br", "en"):
-        return await update.message.reply_text(
-            t("setlang_usage", update=update, context=context)
-        )
+    keyboard = [
+        [
+            InlineKeyboardButton("Português 🇧🇷", callback_data="setlang:pt-br"),
+            InlineKeyboardButton("English 🇺🇸", callback_data="setlang:en"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        t("setlang_prompt", update=update, context=context), reply_markup=reply_markup
+    )
 
-    user_id = update.effective_user.id
+
+async def setlang_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    if not auth_user(user_id):
+        await query.answer(
+            t("auth_denied", update=update, context=context), show_alert=True
+        )
+        return
+
+    await query.answer()
+    choice = query.data.split(":")[1]
+
     with closing(db_connect()) as conn:
         cur = conn.cursor()
         cur.execute(
             "UPDATE users SET lang = ? WHERE telegram_id = ?", (choice, user_id)
         )
         conn.commit()
+
     context.user_data["lang"] = choice
-    await update.message.reply_text(
+    await query.edit_message_text(
         t("setlang_success", update=update, context=context, language=choice)
     )
 
@@ -316,15 +330,22 @@ async def _process_and_save_schedule(
             )
             return
 
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=t(
-                "parsed_rows",
-                user_id=user_id,
-                context=context,
-                count=len(structured_data.rows),
-            ),
-        )
+        inserted = 0
+        processed_rows = []
+        for row in structured_data.rows:
+            normalized = normalize_row(row)
+            if should_skip_row(normalized):
+                continue
+            processed_rows.append(normalized)
+
+        if not processed_rows:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=t("no_rows_parsed", user_id=user_id, context=context),
+            )
+            return
+
+        assigned_classes = assign_dates_to_classes(processed_rows)
 
         with closing(db_connect()) as conn:
             cur = conn.cursor()
@@ -340,16 +361,6 @@ async def _process_and_save_schedule(
                 "DELETE FROM classes WHERE class_date BETWEEN ? AND ?",
                 (monday_of_week.isoformat(), friday_of_week.isoformat()),
             )
-
-            inserted = 0
-            processed_rows = []
-            for row in structured_data.rows:
-                normalized = normalize_row(row)
-                if should_skip_row(normalized):
-                    continue
-                processed_rows.append(normalized)
-
-            assigned_classes = assign_dates_to_classes(processed_rows)
 
             for class_item in assigned_classes:
                 cur.execute(
@@ -371,6 +382,12 @@ async def _process_and_save_schedule(
 
             conn.commit()
 
+        # Detailed success message
+        unique_days = sorted(list(set(c.class_date for c in assigned_classes)))
+        days_str = ", ".join(
+            [datetime.fromisoformat(d).strftime("%d/%m") for d in unique_days]
+        )
+
         await context.bot.send_message(
             chat_id=chat_id,
             text=t(
@@ -379,14 +396,33 @@ async def _process_and_save_schedule(
                 context=context,
                 count=inserted,
                 model=used_model,
-            ),
+            )
+            + f"\n\n📅 *{len(unique_days)}* dias cobertos: {days_str}",
+            parse_mode="Markdown",
         )
 
+    except RuntimeError as e:
+        if "quota" in str(e).lower() or "limit" in str(e).lower():
+            error_text = t("extraction_quota_error", user_id=user_id, context=context)
+        else:
+            error_text = t(
+                "extraction_generic_error",
+                user_id=user_id,
+                context=context,
+                error=str(e),
+            )
+
+        await context.bot.send_message(chat_id=chat_id, text=error_text)
     except Exception as e:
         logger.exception("A extração do Gemini falhou")
         await context.bot.send_message(
             chat_id=chat_id,
-            text=t("extraction_error", user_id=user_id, context=context, error=str(e)),
+            text=t(
+                "extraction_generic_error",
+                user_id=user_id,
+                context=context,
+                error=str(e),
+            ),
         )
 
 
@@ -421,6 +457,11 @@ async def confirm_schedule_processing(
         await query.edit_message_text(
             t("processing_cancelled", update=update, context=context)
         )
+
+
+@check_auth
+async def handle_unknown_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(t("unknown_text", update=update, context=context))
 
 
 async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):

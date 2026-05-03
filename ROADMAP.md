@@ -18,6 +18,8 @@
 - [x] `/upload` flow for image-based schedule ingestion
 - [x] **Change /upload command behavior**: Make so that the user can send a photo without needing to type `/upload` first. The bot will automatically detect that a photo has been sent and will ask if it should be processed.
 - [x] `/remind` command — set a Telegram reminder X minutes before a class
+- [x] Add message when user sends normal text instead of a photo or commands. For example: "Hi! I'm CourseVision, your schedule assistant. Please send me a photo of your class schedule to get started!"
+- [x] Change the /setlang command so that the options are listed as buttons instead of having the user type "en" or "pt". This will improve UX and reduce errors. Use Telegram's inline keyboard feature to implement this. (like the "Yes/No" confirmation for processing photos)
 
 ### Technical Improvements
 - [x] Structured outputs with Pydantic schema validation
@@ -29,11 +31,14 @@
 - [x] Write unit tests for the scheduling/mapping logic
 - [x] Add CI/CD pipeline (GitHub Actions) for linting and tests
 - [x] Migrate to Docker-based local testing (matching CI)
+- [x] Add a `.env.example` with all required variables documented
 
 ### UX / Bot Experience
 - [x] `/start` initialization command
 - [x] Single-image upload flow via Telegram attachment
 - [x] Improved bot responses with human-readable text and emoticons ✨
+- [x] Better error messages when OCR extraction fails or returns partial data
+- [x] Confirmation message after `/upload` showing what was extracted (subject count, days covered)
 
 ### Docs & Community
 - [X] **Visual Architecture Diagram**: Use a Mermaid.js diagram in README
@@ -48,15 +53,10 @@
 > Actively being worked on or planned for the immediate next cycle.
 
 ### New Features
-- [ ] Add message when user sends normal text instead of a photo or commands. For example: "Hi! I'm CourseVision, your schedule assistant. Please send me a photo of your class schedule to get started!"
-- [ ] Change the /setlang command so that the options are listed as buttons instead of having the user type "en" or "pt". This will improve UX and reduce errors. Use Telegram's inline keyboard feature to implement this. (like the "Yes/No" confirmation for processing photos)
 
 ### Technical Improvements
-- [ ] Add a `.env.example` with all required variables documented
 
 ### UX / Bot Experience
-- [ ] Better error messages when OCR extraction fails or returns partial data
-- [ ] Confirmation message after `/upload` showing what was extracted (subject count, days covered)
 
 ### Docs & Community
 

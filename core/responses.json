@@ -2,6 +2,7 @@
   "pt-br": {
     "auth_denied": "🚫 Acesso negado. Este bot é privado!",
     "welcome": "👋 Bem-vindo ao CourseVision!\n\nComandos:\n/setlang pt-br|en - Trocar idioma 🌐\n/upload - Enviar imagem de horário 📸\n/schedule - Ver horários da semana 📅\n/today - Ver aulas de hoje 🕒\n/remind - Configurar lembretes 🔔",
+    "setlang_prompt": "🌐 Escolha o seu idioma preferido:",
     "setlang_usage": "💡 Uso: /setlang pt-br ou /setlang en",
     "setlang_success": "🌐 Idioma alterado para {language} com sucesso!",
     "no_schedule": "📭 Nenhuma aula cadastrada para a semana de {monday}. Envie uma imagem de horário para começar! 📸",
@@ -13,7 +14,9 @@
     "send_image_only": "🖼️ Por favor, envie apenas imagens (JPG ou PNG).",
     "image_received": "📸 Imagem recebida! Preparando para processar... ✨",
     "extracting_schedule": "⏳ Analisando seu horário com IA... Isso pode levar alguns segundos. 🤖",
-    "no_rows_parsed": "❌ O Gemini não encontrou dados de aulas nesta imagem. Tente uma foto mais nítida! 📸",
+    "no_rows_parsed": "❌ Não consegui encontrar dados de aulas nesta imagem. Por favor, verifique se a foto está nítida e bem iluminada. 📸",
+    "extraction_quota_error": "⏳ Meus limites de uso da IA foram atingidos no momento. Por favor, tente novamente em alguns minutos. 🤖",
+    "extraction_generic_error": "❌ Ocorreu um problema ao analisar seu horário. Por favor, verifique a imagem e tente novamente. Detalhes: {error}",
     "parsed_rows": "✅ Sucesso! Encontramos {count} aulas. Organizando tudo agora... 📑",
     "extraction_error": "❌ Ocorreu um erro na extração: {error}",
     "parsing_success": "🎊 Sucesso! {count} aulas foram processadas usando {model}. \nConsulte /schedule para ver seu novo horário! 📅",
@@ -26,11 +29,13 @@
     "remind_usage": "💡 Uso: /remind <minutos> (ex: /remind 15) ou /remind off",
     "remind_success": "🔔 Lembrete configurado! Vou te avisar {minutes} minutos antes de cada aula. ✨",
     "remind_off": "🔕 Lembretes desativados com sucesso.",
-    "reminder_message": "🔔 *Lembrete de Aula!*\n\nSua aula de *{subject}* começa em {minutes} minutos!\n📍 Local: {room}\n👤 Prof: {professor}"
+    "reminder_message": "🔔 *Lembrete de Aula!*\n\nSua aula de *{subject}* começa em {minutes} minutos!\n📍 Local: {room}\n👤 Prof: {professor}",
+    "unknown_text": "👋 Olá! Eu sou o CourseVision, seu assistente de horários.\n\n📸 Para começar, me envie uma foto do seu horário de aulas ou use um dos comandos disponíveis no menu! ✨"
   },
   "en": {
     "auth_denied": "🚫 Access denied. This bot is private!",
     "welcome": "👋 Welcome to CourseVision!\n\nCommands:\n/setlang pt-br|en - Switch language 🌐\n/upload - Upload schedule image 📸\n/schedule - Show weekly schedule 📅\n/today - Today's classes 🕒\n/remind - Configure reminders 🔔",
+    "setlang_prompt": "🌐 Choose your preferred language:",
     "setlang_usage": "💡 Usage: /setlang pt-br or /setlang en",
     "setlang_success": "🌐 Language successfully set to {language}!",
     "no_schedule": "📭 No classes scheduled for the week starting {monday}. Send a schedule image to get started! 📸",
@@ -42,7 +47,9 @@
     "send_image_only": "🖼️ Please send an image (JPG or PNG) only.",
     "image_received": "📸 Image received! Preparing to process... ✨",
     "extracting_schedule": "⏳ Analyzing your schedule with AI... This may take a few seconds. 🤖",
-    "no_rows_parsed": "❌ Gemini couldn't find any class data in that image. Try a clearer photo! 📸",
+    "no_rows_parsed": "❌ I couldn't find any class data in this image. Please check if the photo is clear and well-lit. 📸",
+    "extraction_quota_error": "⏳ My AI usage limits have been reached for now. Please try again in a few minutes. 🤖",
+    "extraction_generic_error": "❌ A problem occurred while analyzing your schedule. Please check the image and try again. Details: {error}",
     "parsed_rows": "✅ Success! Found {count} classes. Organizing everything now... 📑",
     "extraction_error": "❌ An extraction error occurred: {error}",
     "parsing_success": "🎊 Successfully parsed {count} classes using {model}. \nCheck /schedule to see your new schedule! 📅",
@@ -55,6 +62,7 @@
     "remind_usage": "💡 Usage: /remind <minutes> (e.g., /remind 15) or /remind off",
     "remind_success": "🔔 Reminder set! I'll notify you {minutes} minutes before each class. ✨",
     "remind_off": "🔕 Reminders successfully disabled.",
-    "reminder_message": "🔔 *Class Reminder!*\n\nYour *{subject}* class starts in {minutes} minutes!\n📍 Room: {room}\n👤 Prof: {professor}"
+    "reminder_message": "🔔 *Class Reminder!*\n\nYour *{subject}* class starts in {minutes} minutes!\n📍 Room: {room}\n👤 Prof: {professor}",
+    "unknown_text": "👋 Hi! I'm CourseVision, your schedule assistant.\n\n📸 To get started, please send me a photo of your class schedule or use one of the available commands in the menu! ✨"
   }
 }

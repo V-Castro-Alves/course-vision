@@ -18,12 +18,14 @@ from .i18n import load_responses
 from .handlers import (
     start,
     set_language,
+    setlang_callback,
     set_reminder,
     upload_command,
     schedule_text,
     today_classes,
     photo_upload,
     confirm_schedule_processing,  # Added
+    handle_unknown_text,
     attendance_callback,
 )
 from .jobs import send_reminders
@@ -76,8 +78,12 @@ def main():
         MessageHandler(filters.PHOTO | filters.Document.IMAGE, photo_upload)
     )
     app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_text)
+    )
+    app.add_handler(
         CallbackQueryHandler(confirm_schedule_processing, pattern="^process_schedule:")
     )  # Added
+    app.add_handler(CallbackQueryHandler(setlang_callback, pattern="^setlang:"))
     app.add_handler(CallbackQueryHandler(attendance_callback))
 
     # Error Handler
