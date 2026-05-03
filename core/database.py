@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+from functools import wraps
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -8,10 +9,11 @@ from telegram.ext import ContextTypes
 from .config import AUTHORIZED_USER_ID, ALLOWED_TELEGRAM_IDS, DATABASE_PATH
 
 SQL_SCHEMA = [
-    "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER UNIQUE NOT NULL, lang TEXT DEFAULT 'en')",
+    "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER UNIQUE NOT NULL, lang TEXT DEFAULT 'en', reminder_minutes INTEGER)",
     "CREATE TABLE IF NOT EXISTS raw_images (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, mime_type TEXT, image_blob BLOB, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
     "CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY AUTOINCREMENT, day_index INTEGER NOT NULL, class_date TEXT NOT NULL, start_time TEXT, end_time TEXT, subject TEXT NOT NULL, room TEXT NOT NULL, professor TEXT NOT NULL, code TEXT NOT NULL, raw TEXT NOT NULL, source_image_id INTEGER, FOREIGN KEY(source_image_id) REFERENCES raw_images(id))",
     "CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL, class_date TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('attended','skipped')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE TABLE IF NOT EXISTS sent_reminders (user_id INTEGER, class_id INTEGER, PRIMARY KEY (user_id, class_id))",
 ]
 
 
@@ -50,6 +52,12 @@ def init_db():
         cur.execute("ALTER TABLE classes ADD COLUMN start_time TEXT")
     if "end_time" not in columns:
         cur.execute("ALTER TABLE classes ADD COLUMN end_time TEXT")
+
+    # Migration: add reminder_minutes to users
+    cur.execute("PRAGMA table_info(users)")
+    user_columns = [column[1] for column in cur.fetchall()]
+    if "reminder_minutes" not in user_columns:
+        cur.execute("ALTER TABLE users ADD COLUMN reminder_minutes INTEGER")
 
     conn.commit()
     conn.close()
@@ -114,6 +122,7 @@ def auth_user(user_id: int) -> bool:
 
 
 def check_auth(func):
+    @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id if update.effective_user else None
         if not auth_user(user_id):
@@ -136,6 +145,7 @@ def check_auth(func):
 
 
 def check_owner(func):
+    @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id if update.effective_user else None
         if not is_owner(user_id):

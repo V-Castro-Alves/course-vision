@@ -17,6 +17,7 @@
 - [x] `/today` and `/schedule` commands for quick week overview
 - [x] `/upload` flow for image-based schedule ingestion
 - [x] **Change /upload command behavior**: Make so that the user can send a photo without needing to type `/upload` first. The bot will automatically detect that a photo has been sent and will ask if it should be processed.
+- [x] `/remind` command — set a Telegram reminder X minutes before a class
 
 ### Technical Improvements
 - [x] Structured outputs with Pydantic schema validation
@@ -47,7 +48,7 @@
 > Actively being worked on or planned for the immediate next cycle.
 
 ### New Features
-- [ ] `/remind` command — set a Telegram reminder X minutes before a class
+- [ ] Add message when user sends normal text instead of a photo or commands. For example: "Hi! I'm CourseVision, your schedule assistant. Please send me a photo of your class schedule to get started!"
 
 ### Technical Improvements
 - [ ] Add a `.env.example` with all required variables documented

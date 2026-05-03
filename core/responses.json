@@ -1,7 +1,7 @@
 {
   "pt-br": {
     "auth_denied": "🚫 Acesso negado. Este bot é privado!",
-    "welcome": "👋 Bem-vindo ao CourseVision!\n\nComandos:\n/setlang pt-br|en - Trocar idioma 🌐\n/upload - Enviar imagem de horário 📸\n/schedule - Ver horários da semana 📅\n/today - Ver aulas de hoje 🕒",
+    "welcome": "👋 Bem-vindo ao CourseVision!\n\nComandos:\n/setlang pt-br|en - Trocar idioma 🌐\n/upload - Enviar imagem de horário 📸\n/schedule - Ver horários da semana 📅\n/today - Ver aulas de hoje 🕒\n/remind - Configurar lembretes 🔔",
     "setlang_usage": "💡 Uso: /setlang pt-br ou /setlang en",
     "setlang_success": "🌐 Idioma alterado para {language} com sucesso!",
     "no_schedule": "📭 Nenhuma aula cadastrada para a semana de {monday}. Envie uma imagem de horário para começar! 📸",
@@ -22,11 +22,15 @@
     "no_process": "❌ Não, cancelar",
     "processing_confirmed": "🚀 Confirmado! Iniciando o processamento... ⏳",
     "processing_cancelled": "🆗 Tudo bem! Se precisar processar depois, é só enviar a foto novamente. 👍",
-    "photo_data_missing": "⚠️ Ops! Não encontrei os dados da foto. Por favor, envie a imagem novamente. 📸"
+    "photo_data_missing": "⚠️ Ops! Não encontrei os dados da foto. Por favor, envie a imagem novamente. 📸",
+    "remind_usage": "💡 Uso: /remind <minutos> (ex: /remind 15) ou /remind off",
+    "remind_success": "🔔 Lembrete configurado! Vou te avisar {minutes} minutos antes de cada aula. ✨",
+    "remind_off": "🔕 Lembretes desativados com sucesso.",
+    "reminder_message": "🔔 *Lembrete de Aula!*\n\nSua aula de *{subject}* começa em {minutes} minutos!\n📍 Local: {room}\n👤 Prof: {professor}"
   },
   "en": {
     "auth_denied": "🚫 Access denied. This bot is private!",
-    "welcome": "👋 Welcome to CourseVision!\n\nCommands:\n/setlang pt-br|en - Switch language 🌐\n/upload - Upload schedule image 📸\n/schedule - Show weekly schedule 📅\n/today - Today's classes 🕒",
+    "welcome": "👋 Welcome to CourseVision!\n\nCommands:\n/setlang pt-br|en - Switch language 🌐\n/upload - Upload schedule image 📸\n/schedule - Show weekly schedule 📅\n/today - Today's classes 🕒\n/remind - Configure reminders 🔔",
     "setlang_usage": "💡 Usage: /setlang pt-br or /setlang en",
     "setlang_success": "🌐 Language successfully set to {language}!",
     "no_schedule": "📭 No classes scheduled for the week starting {monday}. Send a schedule image to get started! 📸",
@@ -47,6 +51,10 @@
     "no_process": "❌ No, cancel",
     "processing_confirmed": "🚀 Confirmed! Starting processing... ⏳",
     "processing_cancelled": "🆗 No problem! If you want to process it later, just send the photo again. 👍",
-    "photo_data_missing": "⚠️ Oops! I couldn't find the photo data. Please send the image again. 📸"
+    "photo_data_missing": "⚠️ Oops! I couldn't find the photo data. Please send the image again. 📸",
+    "remind_usage": "💡 Usage: /remind <minutes> (e.g., /remind 15) or /remind off",
+    "remind_success": "🔔 Reminder set! I'll notify you {minutes} minutes before each class. ✨",
+    "remind_off": "🔕 Reminders successfully disabled.",
+    "reminder_message": "🔔 *Class Reminder!*\n\nYour *{subject}* class starts in {minutes} minutes!\n📍 Room: {room}\n👤 Prof: {professor}"
   }
 }

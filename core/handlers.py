@@ -51,6 +51,47 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @check_auth
+async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    parts = context.args
+    if not parts:
+        return await update.message.reply_text(
+            t("remind_usage", update=update, context=context)
+        )
+
+    choice = parts[0].lower()
+    user_id = update.effective_user.id
+    conn = db_connect()
+    cur = conn.cursor()
+
+    if choice == "off":
+        cur.execute(
+            "UPDATE users SET reminder_minutes = NULL WHERE telegram_id = ?", (user_id,)
+        )
+        conn.commit()
+        conn.close()
+        return await update.message.reply_text(
+            t("remind_off", update=update, context=context)
+        )
+
+    if not choice.isdigit():
+        conn.close()
+        return await update.message.reply_text(
+            t("remind_usage", update=update, context=context)
+        )
+
+    minutes = int(choice)
+    cur.execute(
+        "UPDATE users SET reminder_minutes = ? WHERE telegram_id = ?",
+        (minutes, user_id),
+    )
+    conn.commit()
+    conn.close()
+    await update.message.reply_text(
+        t("remind_success", update=update, context=context, minutes=minutes)
+    )
+
+
+@check_auth
 async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = db_connect()
     cur = conn.cursor()

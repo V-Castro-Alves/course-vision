@@ -12,6 +12,7 @@ services:
       # Set environment variables required by your application or tests
       # For example, if your tests need access to a database, you might link it
       - DATABASE_URL=sqlite:///./test.db # Example, adjust as needed for your tests
+      - PYTHONPATH=/app
     # No ports needed for CI checks
     # Depend on any other services your tests might need (e.g., database)
     # depends_on:

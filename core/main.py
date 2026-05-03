@@ -12,6 +12,7 @@ from .i18n import load_responses
 from .handlers import (
     start,
     set_language,
+    set_reminder,
     upload_command,
     schedule_text,
     today_classes,
@@ -19,6 +20,7 @@ from .handlers import (
     confirm_schedule_processing,  # Added
     attendance_callback,
 )
+from .jobs import send_reminders
 
 
 def main():
@@ -29,6 +31,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", start))
     app.add_handler(CommandHandler("setlang", set_language))
+    app.add_handler(CommandHandler("remind", set_reminder))
     app.add_handler(CommandHandler("upload", upload_command))
     app.add_handler(CommandHandler("schedule", schedule_text))
     app.add_handler(CommandHandler("today", today_classes))
@@ -39,6 +42,13 @@ def main():
         CallbackQueryHandler(confirm_schedule_processing, pattern="^process_schedule:")
     )  # Added
     app.add_handler(CallbackQueryHandler(attendance_callback))
+
+    # Job Queue
+    if app.job_queue:
+        app.job_queue.run_repeating(send_reminders, interval=60, first=10)
+        logger.info("Job queue iniciado.")
+    else:
+        logger.warning("Job queue não disponível. Lembretes não funcionarão.")
 
     logger.info("Bot iniciado.")
     app.run_polling()

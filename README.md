@@ -20,6 +20,7 @@
 *   **🗓️ Deterministic Scheduling:** Automatically maps extracted classes to the current week (Monday-Friday) using a smart 2-per-day logic.
 *   **🔄 Auto-Sync:** Uploading a new schedule automatically wipes the old one for that week—no manual cleanup required.
 *   **🔒 Granular Privacy:** Restrict access to specific Telegram User IDs.
+*   **🔔 Smart Reminders:** Set customizable notifications to alert you before your classes start.
 *   **🤖 Model Resilience:** Automatic fallback logic ensures the bot stays online even if primary API quotas are hit.
 *   **🌐 Multi-language:** Supports both English and Portuguese.
 
@@ -100,6 +101,7 @@ python main.py
 3.  **/upload** to learn how to upload your schedule.
 4.  **Attach Image** — Send the schedule photo directly! The bot will automatically detect it and ask if you want to process it.
 5.  **/today** or **/schedule** to see your week at a glance.
+6.  **/remind <minutes>** to set a reminder (e.g., `/remind 15`) or **/remind off** to disable it.
 
 ---
 
@@ -119,6 +121,7 @@ python main.py
 *   **🗓️ Agendamento Determinístico:** Mapeia automaticamente as aulas extraídas para a semana atual (segunda a sexta-feira) usando uma lógica inteligente de 2 aulas por dia.
 *   **🔄 Sincronização Automática:** Fazer upload de um novo horário apaga automaticamente o antigo para aquela semana — nenhuma limpeza manual é necessária.
 *   **🔒 Privacidade Granular:** Restringe o acesso a IDs de Usuários específicos do Telegram.
+*   **🔔 Lembretes Inteligentes:** Configure notificações personalizadas para alertá-lo antes do início de suas aulas.
 *   **🤖 Resiliência do Modelo:** A lógica de fallback automático garante que o bot permaneça online mesmo se as cotas da API principal forem atingidas.
 *   **🌐 Multi-idioma:** Suporta Inglês e Português.
 
@@ -148,7 +151,7 @@ cd CourseVision
 
 # Crie o arquivo de ambiente
 cp .env.example .env
-# Edite .env com suas credenciais
+# Edite .env with suas credenciais
 ```
 
 ### 3. Execução
@@ -170,4 +173,5 @@ python main.py
 2.  **/setlang pt-br|en** para escolher seu idioma preferido.
 3.  **/upload** para aprender como enviar seu horário.
 4.  **Anexar Imagem** — Envie a foto do horário diretamente! O bot irá detectá-la automaticamente e perguntará se deseja processar.
-5.  **/today** ou **/schedule** para ver sua semana rapidamente.
+5.  **/today** or **/schedule** para ver sua semana rapidamente.
+6.  **/remind <minutos>** para configurar um lembrete (ex: `/remind 15`) ou **/remind off** para desativá-lo.
