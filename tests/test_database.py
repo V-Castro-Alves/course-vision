@@ -21,8 +21,9 @@ class TestDatabase(unittest.TestCase):
             os.remove(test_db)
 
         # Patch the DATABASE_PATH in core.database and core.config
-        with patch("core.database.DATABASE_PATH", test_db), patch(
-            "core.config.DATABASE_PATH", test_db
+        with (
+            patch("core.database.DATABASE_PATH", test_db),
+            patch("core.config.DATABASE_PATH", test_db),
         ):
             from core import database
 
