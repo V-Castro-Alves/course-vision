@@ -3,6 +3,7 @@ import sqlite3
 import mimetypes
 from datetime import datetime, timedelta
 import tempfile
+from contextlib import closing
 
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -39,11 +40,12 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     user_id = update.effective_user.id
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET lang = ? WHERE telegram_id = ?", (choice, user_id))
-    conn.commit()
-    conn.close()
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET lang = ? WHERE telegram_id = ?", (choice, user_id)
+        )
+        conn.commit()
     context.user_data["lang"] = choice
     await update.message.reply_text(
         t("setlang_success", update=update, context=context, language=choice)
@@ -60,32 +62,32 @@ async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     choice = parts[0].lower()
     user_id = update.effective_user.id
-    conn = db_connect()
-    cur = conn.cursor()
 
     if choice == "off":
-        cur.execute(
-            "UPDATE users SET reminder_minutes = NULL WHERE telegram_id = ?", (user_id,)
-        )
-        conn.commit()
-        conn.close()
+        with closing(db_connect()) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE users SET reminder_minutes = NULL WHERE telegram_id = ?",
+                (user_id,),
+            )
+            conn.commit()
         return await update.message.reply_text(
             t("remind_off", update=update, context=context)
         )
 
     if not choice.isdigit():
-        conn.close()
         return await update.message.reply_text(
             t("remind_usage", update=update, context=context)
         )
 
     minutes = int(choice)
-    cur.execute(
-        "UPDATE users SET reminder_minutes = ? WHERE telegram_id = ?",
-        (minutes, user_id),
-    )
-    conn.commit()
-    conn.close()
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET reminder_minutes = ? WHERE telegram_id = ?",
+            (minutes, user_id),
+        )
+        conn.commit()
     await update.message.reply_text(
         t("remind_success", update=update, context=context, minutes=minutes)
     )
@@ -93,18 +95,18 @@ async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @check_auth
 async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    conn = db_connect()
-    cur = conn.cursor()
-
     today = get_today_date()
     monday_of_week = get_monday_of_week(today)
     friday_of_week = monday_of_week + timedelta(days=4)
 
-    cur.execute(
-        "SELECT * FROM classes WHERE class_date BETWEEN ? AND ? ORDER BY day_index, class_date",
-        (monday_of_week.isoformat(), friday_of_week.isoformat()),
-    )
-    items = cur.fetchall()
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM classes WHERE class_date BETWEEN ? AND ? ORDER BY day_index, class_date",
+            (monday_of_week.isoformat(), friday_of_week.isoformat()),
+        )
+        items = cur.fetchall()
+
     if not items:
         await update.message.reply_text(
             t(
@@ -114,7 +116,6 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 monday=monday_of_week.strftime("%d/%m"),
             )
         )
-        conn.close()
         return
 
     text = [
@@ -141,22 +142,21 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.message.reply_text("\n".join(text), parse_mode="Markdown")
-    conn.close()
 
 
 @check_auth
 async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    conn = db_connect()
-    cur = conn.cursor()
-
     today = get_today_date()
     today_iso = today.isoformat()
 
-    cur.execute(
-        "SELECT * FROM classes WHERE class_date = ? ORDER BY day_index, class_date",
-        (today_iso,),
-    )
-    items = cur.fetchall()
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM classes WHERE class_date = ? ORDER BY day_index, class_date",
+            (today_iso,),
+        )
+        items = cur.fetchall()
+
     if not items:
         await update.message.reply_text(
             t(
@@ -166,7 +166,6 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 today=today.strftime("%d/%m"),
             )
         )
-        conn.close()
         return
 
     text = [
@@ -181,7 +180,6 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.message.reply_text("\n".join(text), parse_mode="Markdown")
-    conn.close()
 
 
 @check_owner
@@ -260,15 +258,14 @@ async def _process_and_save_schedule(
     if not mime_type:
         mime_type = "image/jpeg"
 
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO raw_images (filename, mime_type, image_blob) VALUES (?, ?, ?)",
-        (os.path.basename(path), mime_type, sqlite3.Binary(image_bytes)),
-    )
-    source_image_id = cur.lastrowid
-    conn.commit()
-    conn.close()
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO raw_images (filename, mime_type, image_blob) VALUES (?, ?, ?)",
+            (os.path.basename(path), mime_type, sqlite3.Binary(image_bytes)),
+        )
+        source_image_id = cur.lastrowid
+        conn.commit()
 
     prompt = (
         "Extract class schedule entries from the provided image, which is an Excel screenshot. "
@@ -310,51 +307,50 @@ async def _process_and_save_schedule(
             ),
         )
 
-        conn = db_connect()
-        cur = conn.cursor()
+        with closing(db_connect()) as conn:
+            cur = conn.cursor()
 
-        today = get_today_date()
-        monday_of_week = get_monday_of_week(today)
-        friday_of_week = monday_of_week + timedelta(days=4)
+            today = get_today_date()
+            monday_of_week = get_monday_of_week(today)
+            friday_of_week = monday_of_week + timedelta(days=4)
 
-        logger.info(
-            f"Deleting classes for the week of {monday_of_week.isoformat()} to {friday_of_week.isoformat()}"
-        )
-        cur.execute(
-            "DELETE FROM classes WHERE class_date BETWEEN ? AND ?",
-            (monday_of_week.isoformat(), friday_of_week.isoformat()),
-        )
-
-        inserted = 0
-        processed_rows = []
-        for row in structured_data.rows:
-            normalized = normalize_row(row)
-            if should_skip_row(normalized):
-                continue
-            processed_rows.append(normalized)
-
-        assigned_classes = assign_dates_to_classes(processed_rows)
-
-        for class_item in assigned_classes:
-            cur.execute(
-                "INSERT INTO classes (day_index, class_date, start_time, end_time, code, subject, professor, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    class_item.day_index,
-                    class_item.class_date,
-                    class_item.start_time,
-                    class_item.end_time,
-                    class_item.class_code,
-                    class_item.class_name,
-                    class_item.professor,
-                    class_item.classroom,
-                    "Gemini parsed",
-                    source_image_id,
-                ),
+            logger.info(
+                f"Deleting classes for the week of {monday_of_week.isoformat()} to {friday_of_week.isoformat()}"
             )
-            inserted += 1
+            cur.execute(
+                "DELETE FROM classes WHERE class_date BETWEEN ? AND ?",
+                (monday_of_week.isoformat(), friday_of_week.isoformat()),
+            )
 
-        conn.commit()
-        conn.close()
+            inserted = 0
+            processed_rows = []
+            for row in structured_data.rows:
+                normalized = normalize_row(row)
+                if should_skip_row(normalized):
+                    continue
+                processed_rows.append(normalized)
+
+            assigned_classes = assign_dates_to_classes(processed_rows)
+
+            for class_item in assigned_classes:
+                cur.execute(
+                    "INSERT INTO classes (day_index, class_date, start_time, end_time, code, subject, professor, room, raw, source_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        class_item.day_index,
+                        class_item.class_date,
+                        class_item.start_time,
+                        class_item.end_time,
+                        class_item.class_code,
+                        class_item.class_name,
+                        class_item.professor,
+                        class_item.classroom,
+                        "Gemini parsed",
+                        source_image_id,
+                    ),
+                )
+                inserted += 1
+
+            conn.commit()
 
         await context.bot.send_message(
             chat_id=chat_id,
@@ -420,13 +416,12 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.answer("Callback inválido")
         return
     _, class_id, class_date, status = query.data.split(":", 3)
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO attendance (class_id, class_date, status) VALUES (?, ?, ?)",
-        (class_id, class_date, status),
-    )
-    conn.commit()
-    conn.close()
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO attendance (class_id, class_date, status) VALUES (?, ?, ?)",
+            (class_id, class_date, status),
+        )
+        conn.commit()
     await query.answer(f"Marcado como {status}")
     await query.edit_message_text(f"Presença para {class_date}: {status}")

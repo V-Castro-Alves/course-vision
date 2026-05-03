@@ -15,6 +15,12 @@ ALLOWED_TELEGRAM_IDS = [
 ]
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "database.db")
+if DATABASE_PATH == ":memory:":
+    logging.getLogger(__name__).warning(
+        "DATABASE_PATH is set to ':memory:'. Data will not persist between connections and background jobs will fail. Use a file path for persistence."
+    )
+elif not os.path.isabs(DATABASE_PATH):
+    DATABASE_PATH = os.path.abspath(DATABASE_PATH)
 RESPONSES_PATH = os.getenv(
     "RESPONSES_PATH",
     os.path.join(os.path.dirname(__file__), "responses.json"),

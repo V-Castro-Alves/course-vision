@@ -33,9 +33,12 @@ async def test_set_reminder_off():
     context = MagicMock()
     context.args = ["off"]
 
-    with patch("core.handlers.db_connect") as mock_db:
+    with patch("core.handlers.db_connect") as mock_db, patch(
+        "core.handlers.closing"
+    ) as mock_closing:
         mock_conn = MagicMock()
         mock_db.return_value = mock_conn
+        mock_closing.return_value.__enter__.return_value = mock_conn
 
         await set_reminder.__wrapped__(update, context)
 
@@ -54,9 +57,12 @@ async def test_set_reminder_success():
     context = MagicMock()
     context.args = ["15"]
 
-    with patch("core.handlers.db_connect") as mock_db:
+    with patch("core.handlers.db_connect") as mock_db, patch(
+        "core.handlers.closing"
+    ) as mock_closing:
         mock_conn = MagicMock()
         mock_db.return_value = mock_conn
+        mock_closing.return_value.__enter__.return_value = mock_conn
 
         await set_reminder.__wrapped__(update, context)
 

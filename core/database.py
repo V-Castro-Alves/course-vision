@@ -1,7 +1,7 @@
-import os
 import re
 import sqlite3
 from functools import wraps
+from contextlib import closing
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -18,49 +18,56 @@ SQL_SCHEMA = [
 
 
 def db_connect():
-    database_path = os.getenv("DATABASE_PATH", DATABASE_PATH)
-    conn = sqlite3.connect(database_path, check_same_thread=False)
+    from .config import logger
+
+    logger.info(f"Connecting to database at: {DATABASE_PATH}")
+    conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def drop_all_tables():
-    conn = db_connect()
-    cur = conn.cursor()
-    table_names = []
-    for stmt in SQL_SCHEMA:
-        match = re.search(r"CREATE TABLE (?:IF NOT EXISTS )?(\w+)", stmt)
-        if match:
-            table_names.append(match.group(1))
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        table_names = []
+        for stmt in SQL_SCHEMA:
+            match = re.search(r"CREATE TABLE (?:IF NOT EXISTS )?(\w+)", stmt)
+            if match:
+                table_names.append(match.group(1))
 
-    for table_name in reversed(table_names):
-        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
-    conn.commit()
-    conn.close()
+        for table_name in reversed(table_names):
+            cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+        conn.commit()
 
 
 def init_db():
-    conn = db_connect()
-    cur = conn.cursor()
-    for stmt in SQL_SCHEMA:
-        cur.execute(stmt)
+    from .config import logger
 
-    # Migration: add start_time and end_time if they don't exist
-    cur.execute("PRAGMA table_info(classes)")
-    columns = [column[1] for column in cur.fetchall()]
-    if "start_time" not in columns:
-        cur.execute("ALTER TABLE classes ADD COLUMN start_time TEXT")
-    if "end_time" not in columns:
-        cur.execute("ALTER TABLE classes ADD COLUMN end_time TEXT")
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        for stmt in SQL_SCHEMA:
+            cur.execute(stmt)
+        logger.info("Database tables initialized.")
 
-    # Migration: add reminder_minutes to users
-    cur.execute("PRAGMA table_info(users)")
-    user_columns = [column[1] for column in cur.fetchall()]
-    if "reminder_minutes" not in user_columns:
-        cur.execute("ALTER TABLE users ADD COLUMN reminder_minutes INTEGER")
+        # Migration: add start_time and end_time if they don't exist
+        cur.execute("PRAGMA table_info(classes)")
+        columns = [column[1] for column in cur.fetchall()]
+        if "start_time" not in columns:
+            cur.execute("ALTER TABLE classes ADD COLUMN start_time TEXT")
+            logger.info("Added start_time column to classes table.")
+        if "end_time" not in columns:
+            cur.execute("ALTER TABLE classes ADD COLUMN end_time TEXT")
+            logger.info("Added end_time column to classes table.")
 
-    conn.commit()
-    conn.close()
+        # Migration: add reminder_minutes to users
+        cur.execute("PRAGMA table_info(users)")
+        user_columns = [column[1] for column in cur.fetchall()]
+        if "reminder_minutes" not in user_columns:
+            cur.execute("ALTER TABLE users ADD COLUMN reminder_minutes INTEGER")
+            logger.info("Added reminder_minutes column to users table.")
+
+        conn.commit()
+    logger.info("Database initialization complete.")
 
 
 def get_user_lang(
@@ -94,16 +101,17 @@ def get_user_lang(
     ):  # This could happen if only context was available but no user_data.lang
         return "en"
 
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("SELECT lang FROM users WHERE telegram_id = ?", (user_id,))
-    user_row = cur.fetchone()
-    if not user_row:
-        cur.execute("INSERT INTO users (telegram_id) VALUES (?)", (user_id,))
-        conn.commit()
-        lang = "en"
-    else:
-        lang = user_row["lang"]
+    with closing(db_connect()) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT lang FROM users WHERE telegram_id = ?", (user_id,))
+        user_row = cur.fetchone()
+        if not user_row:
+            cur.execute("INSERT INTO users (telegram_id) VALUES (?)", (user_id,))
+            conn.commit()
+            lang = "en"
+        else:
+            lang = user_row["lang"]
+
     if (
         context
         and hasattr(context, "user_data")

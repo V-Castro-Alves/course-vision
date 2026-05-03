@@ -49,6 +49,7 @@
 
 ### New Features
 - [ ] Add message when user sends normal text instead of a photo or commands. For example: "Hi! I'm CourseVision, your schedule assistant. Please send me a photo of your class schedule to get started!"
+- [ ] Change the /setlang command so that the options are listed as buttons instead of having the user type "en" or "pt". This will improve UX and reduce errors. Use Telegram's inline keyboard feature to implement this. (like the "Yes/No" confirmation for processing photos)
 
 ### Technical Improvements
 - [ ] Add a `.env.example` with all required variables documented

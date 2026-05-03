@@ -12,6 +12,10 @@ This project uses the `google-genai` SDK and Structured Outputs to parse class s
 - **Structured Output:** Use Pydantic models for Gemini responses to ensure reliability. The `ClassRow` model now focuses on extracting `class_code`, `class_name`, `professor`, and `classroom`. Day and date information is assigned deterministically after extraction.
 - **Fallbacks:** Maintain the `generate_with_model_fallback` logic to handle quota issues by switching between available models (e.g., Gemini 2.5 Flash, 2.0 Flash). The list of candidates is managed in `core/config.py`.
 - **Validation:** Always normalize extracted strings (strip whitespace, capitalize days) before saving to the database.
+- **Resilience & Resource Management:**
+    - **Resource Safety:** ALWAYS use `contextlib.closing` with database connections to guarantee they are closed, preventing locks and resource leaks.
+    - **Isolation:** Background jobs MUST implement internal `try...except...finally` blocks. Errors in jobs should never propagate to the main application.
+    - **Global Error Handling:** Maintain a global error handler to capture and report uncaught exceptions to the `AUTHORIZED_USER_ID`.
 - **Documentation Updates:** When a new feature is successfully implemented, ALWAYS update the `README.md` (and any other relevant documentation) to reflect the new functionality.
 - **Bilingual Consistency:** When updating user-facing documentation (e.g., `README.md`), ensure all language versions (English and Portuguese) are updated consistently.
 
@@ -32,6 +36,7 @@ The project uses a `.env` file to configure sensitive information and customizab
 ## Technical Details
 
 - **Database:** SQLite3.
+    -   **Path Management:** `DATABASE_PATH` must be absolute (handled in `core/config.py`) to ensure consistency between the main application and background threads/jobs.
     -   Table `classes` includes `day_index` (0-6, where 0 is Monday), `class_date` (YYYY-MM-DD), `start_time`, and `end_time`.
     -   Table `attendance` tracks class presence (`attended`, `skipped`).
     -   When a schedule image is uploaded, existing classes for the *current week* (Monday to Friday) are deleted, and new classes are added.
