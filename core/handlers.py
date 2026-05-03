@@ -128,18 +128,28 @@ async def schedule_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     ]
     current_day_index = -1
-    for r in items:
+    for i, r in enumerate(items):
         if r["day_index"] != current_day_index:
+            if current_day_index != -1:
+                text.append("──────────────")
+
             current_day_index = r["day_index"]
             class_date_obj = datetime.fromisoformat(r["class_date"]).date()
             text.append(
-                f"\n{WEEKDAYS_PTBR_SHORT[current_day_index]} ({class_date_obj.strftime('%d/%m')})"
+                f"\n🗓️ *{WEEKDAYS_PTBR_SHORT[current_day_index]} ({class_date_obj.strftime('%d/%m')})*"
             )
+            text.append("──────────────")
+        else:
+            # Same day, add dotted separator
+            text.append("┈┈┈┈┈┈┈┈┈┈┈┈┈┈")
 
         text.append(
-            f"• *{r['start_time']} - {r['end_time']}* | {r['code']} - {r['subject']}"
-            f"\n└ 👤 Prof. {r['professor']} | 📍 {r['room']}"
+            f"⏰ *{r['start_time']} - {r['end_time']}*\n"
+            f"📚 *{r['subject']}* ({r['code']})\n"
+            f"👤 Prof. {r['professor']}  |  📍 {r['room']}"
         )
+
+    text.append("──────────────")
 
     await update.message.reply_text("\n".join(text), parse_mode="Markdown")
 
@@ -171,13 +181,22 @@ async def today_classes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = [
         t("today_header", update=update, context=context, today=today.strftime("%d/%m"))
     ]
-    text.append(f"\n{WEEKDAYS_PTBR_SHORT[today.weekday()]} ({today.strftime('%d/%m')})")
+    text.append(
+        f"\n🗓️ *{WEEKDAYS_PTBR_SHORT[today.weekday()]} ({today.strftime('%d/%m')})*"
+    )
+    text.append("──────────────")
 
-    for r in items:
+    for i, r in enumerate(items):
+        if i > 0:
+            text.append("┈┈┈┈┈┈┈┈┈┈┈┈┈┈")
+
         text.append(
-            f"• *{r['start_time']} - {r['end_time']}* | {r['code']} - {r['subject']}"
-            f"\n└ 👤 Prof. {r['professor']} | 📍 {r['room']}"
+            f"⏰ *{r['start_time']} - {r['end_time']}*\n"
+            f"📚 *{r['subject']}* ({r['code']})\n"
+            f"👤 Prof. {r['professor']}  |  📍 {r['room']}"
         )
+
+    text.append("──────────────")
 
     await update.message.reply_text("\n".join(text), parse_mode="Markdown")
 
